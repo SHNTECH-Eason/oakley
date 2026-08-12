@@ -73,35 +73,70 @@
   // 用 Web Audio 合成，不放音檔，離線也有聲音
 
   var audioCtx = null;
+  var master = null;
 
-  function tone(freq, startAt, dur, gainPeak) {
+  function ensureAudio() {
+    try {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        master = audioCtx.createGain();
+        master.gain.value = 0.9;                // 手機喇叭要夠大聲才聽得到
+        master.connect(audioCtx.destination);
+      }
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      return audioCtx;
+    } catch (e) {
+      return null;                              // 不支援就安靜跳過
+    }
+  }
+
+  /**
+   * iOS 規定音訊必須在使用者手勢裡啟動，而且 resume() 是非同步的。
+   * 第一次碰到畫面就先用一個無聲的 buffer 把它解鎖，
+   * 否則第一次打卡的聲音會被系統吞掉。
+   */
+  function unlockAudio() {
+    var ctx = ensureAudio();
+    if (!ctx) return;
+    var src = ctx.createBufferSource();
+    src.buffer = ctx.createBuffer(1, 1, 22050);
+    src.connect(ctx.destination);
+    src.start(0);
+  }
+
+  function tone(freq, startAt, dur, gainPeak, type) {
     var osc = audioCtx.createOscillator();
     var gain = audioCtx.createGain();
-    osc.type = 'triangle';
+    osc.type = type || 'triangle';
     osc.frequency.value = freq;
-    gain.gain.setValueAtTime(0, startAt);
-    gain.gain.linearRampToValueAtTime(gainPeak, startAt + 0.015);
+    gain.gain.setValueAtTime(0.0001, startAt);
+    gain.gain.exponentialRampToValueAtTime(gainPeak, startAt + 0.012);
     gain.gain.exponentialRampToValueAtTime(0.0001, startAt + dur);
-    osc.connect(gain).connect(audioCtx.destination);
+    osc.connect(gain).connect(master);
     osc.start(startAt);
     osc.stop(startAt + dur + 0.02);
   }
 
   function play(kind) {
     if (!Store.state.settings.sound) return;
-    try {
-      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      if (audioCtx.state === 'suspended') audioCtx.resume();
-    } catch (e) {
-      return;                                   // 不支援就安靜跳過
-    }
-    var t = audioCtx.currentTime;
+    if (!ensureAudio()) return;
+
+    // 排在稍微之後，讓 resume() 有時間完成，不然第一聲會缺角
+    var t = audioCtx.currentTime + 0.02;
+
     if (kind === 'done') {
-      tone(880, t, 0.12, 0.22); tone(1318, t + 0.08, 0.18, 0.18);
+      // 清脆上行三音，像蓋章的「叮鈴」
+      tone(784, t, 0.10, 0.5);
+      tone(1046, t + 0.06, 0.14, 0.45);
+      tone(1568, t + 0.12, 0.26, 0.32);
     } else if (kind === 'undo') {
-      tone(440, t, 0.1, 0.14); tone(330, t + 0.06, 0.12, 0.12);
+      tone(494, t, 0.10, 0.3);
+      tone(370, t + 0.07, 0.16, 0.26);
     } else if (kind === 'perfect') {
-      [523, 659, 784, 1046].forEach(function (f, i) { tone(f, t + i * 0.11, 0.32, 0.2); });
+      [523, 659, 784, 1046, 1318].forEach(function (f, i) {
+        tone(f, t + i * 0.10, 0.42, 0.45);
+      });
+      tone(2093, t + 0.52, 0.7, 0.3, 'sine');
     }
   }
 
@@ -794,8 +829,17 @@
 
     wireSync();
 
-    // 跨過午夜時自動換到新的一天
-    document.addEventListener('visibilitychange', checkDayRollover);
+    $('#update-apply').addEventListener('click', applyUpdate);
+    $('#update-check').addEventListener('click', checkForUpdate);
+
+    // iOS 要在使用者手勢裡才能啟動音訊，第一次碰畫面就先解鎖
+    document.addEventListener('pointerdown', unlockAudio, { once: true });
+
+    // 跨過午夜時自動換到新的一天，順便看看有沒有新版
+    document.addEventListener('visibilitychange', function () {
+      checkDayRollover();
+      if (!document.hidden && swRegistration) swRegistration.update();
+    });
     setInterval(checkDayRollover, 60000);
   }
 
@@ -822,11 +866,63 @@
     $$('[data-zy]').forEach(function (node) { Zhuyin.fill(node, node.dataset.zy); });
   }
 
+  // ── 版本更新 ────────────────────────────────────────────
+
+  var swRegistration = null;
+  var reloadingForUpdate = false;
+
+  function showUpdateBar() {
+    $('#update-bar').hidden = false;
+  }
+
+  function applyUpdate() {
+    var waiting = swRegistration && swRegistration.waiting;
+    if (!waiting) { location.reload(); return; }
+    $('#update-apply').disabled = true;
+    $('#update-apply').textContent = '更新中…';
+    // 新的 Service Worker 接手後會觸發 controllerchange，那時才重新載入
+    waiting.postMessage({ type: 'SKIP_WAITING' });
+  }
+
   function initServiceWorker() {
     // file:// 開啟時不能註冊 Service Worker，直接跳過
     if (!('serviceWorker' in navigator) || location.protocol === 'file:') return;
-    navigator.serviceWorker.register('sw.js').catch(function (e) {
+
+    navigator.serviceWorker.register('sw.js').then(function (reg) {
+      swRegistration = reg;
+
+      // 上次跳出提示但沒更新就關掉了，這次進來要再提醒一次
+      if (reg.waiting && navigator.serviceWorker.controller) showUpdateBar();
+
+      reg.addEventListener('updatefound', function () {
+        var incoming = reg.installing;
+        if (!incoming) return;
+        incoming.addEventListener('statechange', function () {
+          // 有 controller 才代表這是「更新」；第一次安裝不用打擾使用者
+          if (incoming.state === 'installed' && navigator.serviceWorker.controller) showUpdateBar();
+        });
+      });
+    }).catch(function (e) {
       console.warn('Service Worker 註冊失敗：', e);
+    });
+
+    navigator.serviceWorker.addEventListener('controllerchange', function () {
+      if (reloadingForUpdate) return;
+      reloadingForUpdate = true;
+      location.reload();
+    });
+  }
+
+  function checkForUpdate() {
+    if (!swRegistration) { toast('這個環境不支援離線更新'); return; }
+    toast('檢查中…');
+    swRegistration.update().then(function () {
+      setTimeout(function () {
+        if (swRegistration.waiting) { showUpdateBar(); toast('有新版本可以更新'); }
+        else toast('已經是最新版本');
+      }, 1200);
+    }).catch(function () {
+      toast('檢查失敗，請確認網路');
     });
   }
 

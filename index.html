@@ -249,6 +249,16 @@
       </div>
     </details>
 
+    <details class="card">
+      <summary class="card__head">版本與更新</summary>
+      <div class="card__body">
+        <p class="card__desc">App 會把檔案存在裝置上所以離線也能用。有新版時畫面下方會跳出提示，也可以在這裡手動檢查。</p>
+        <div class="row">
+          <button class="btn btn--ghost" id="update-check">檢查更新</button>
+        </div>
+      </div>
+    </details>
+
     <details class="card card--danger">
       <summary class="card__head">危險區</summary>
       <div class="card__body">
@@ -280,6 +290,11 @@
     <div class="celebrate__bonus">＋<span id="celebrate-bonus">5</span> 🐾</div>
     <button class="btn btn--primary" id="celebrate-close">耶！</button>
   </div>
+</div>
+
+<div class="update-bar" id="update-bar" hidden>
+  <span class="update-bar__text">🎉 有新版本了</span>
+  <button class="btn btn--primary" id="update-apply">立即更新</button>
 </div>
 
 <div class="toast" id="toast" hidden></div>

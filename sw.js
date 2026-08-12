@@ -6,7 +6,7 @@
  *
  * 改版時記得把 CACHE 的版號 +1，舊快取才會被清掉。
  */
-var CACHE = 'oakley-routine-v2';
+var CACHE = 'oakley-routine-v4';
 
 var PRECACHE = [
   './',
@@ -25,11 +25,17 @@ var PRECACHE = [
 ];
 
 self.addEventListener('install', function (e) {
+  // 這裡故意不呼叫 skipWaiting()：裝好之後先在旁邊等，
+  // 由頁面跳出「有新版本」讓使用者自己決定何時切換。
+  // 小朋友正在打卡打到一半時被整個換掉並重新載入不是好體驗。
   e.waitUntil(
-    caches.open(CACHE)
-      .then(function (cache) { return cache.addAll(PRECACHE); })
-      .then(function () { return self.skipWaiting(); })
+    caches.open(CACHE).then(function (cache) { return cache.addAll(PRECACHE); })
   );
+});
+
+// 頁面按下「更新」時才真的接手
+self.addEventListener('message', function (e) {
+  if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
 });
 
 self.addEventListener('activate', function (e) {
