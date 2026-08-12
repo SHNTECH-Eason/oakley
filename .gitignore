@@ -11,8 +11,8 @@ Desktop.ini
 # 本機備份匯出的檔案
 oakley-作息紀錄-*.json
 
-# 原始素材（檔名有空白括號，且是私人資料，不進版控）
+# 原始素材：檔名有空白括號，且海報上有孩子的真實姓名，不進版控
 kids_routine_poster*.html
-林禹欣*.pdf
+*.pdf
 pngtree.png
 Skye_-_Standard_29_Official_Vector_05.png

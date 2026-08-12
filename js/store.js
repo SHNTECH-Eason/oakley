@@ -30,7 +30,9 @@
   function defaults() {
     return {
       version: 1,
-      child: { name: '林禹欣', nickname: 'Oaklay' },
+      // 真實姓名故意不寫在程式碼裡（這是公開 repo）。
+      // 畫面上顯示的一直都是暱稱，要填全名的話存在雲端那份設定就好。
+      child: { name: '', nickname: 'Oaklay' },
       settings: {
         pin: null,           // 家長 PIN。故意不上傳，每台裝置各自設定
         pointsPerTask: 1,    // 每完成一項的爪印數

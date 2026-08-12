@@ -96,27 +96,39 @@ Firestore Database → 規則 → 把 `firestore.rules` 的內容整份貼上 �
 
 ---
 
-## 部署
+## 部署（GitHub Pages）
 
-程式全部是靜態檔案，push 上去就能部署。
+程式全部是靜態檔案，沒有建置流程，push 上去就會自動更新。
 
-**建議：Cloudflare Pages**（免費、支援私有 repo）
+repo 的 Settings → Pages → Source 選 **Deploy from a branch**，Branch 選 `main` / `/ (root)`，存檔後網址是：
 
-1. Cloudflare Dashboard → Workers & Pages → Create → Pages → Connect to Git
-2. 選這個 repo
-3. Build command 留空，Build output directory 填 `/`
-4. 部署完會拿到一個 `xxx.pages.dev` 的網址
+```
+https://shntech-eason.github.io/oakley/
+```
 
-因為專案裡有孩子的真實姓名，**建議 repo 設成私有**。GitHub 免費帳號的 Pages 只能開在公開 repo，Cloudflare Pages 和 Netlify 的免費方案則可以從私有 repo 部署。
+注意網址帶了 `/oakley/` 子路徑，所以專案裡**所有路徑都必須是相對路徑**（Service Worker 註冊、manifest 的 `start_url` 和 `scope`、快取清單都是）。改程式時不要改成 `/css/styles.css` 這種絕對路徑，會在子路徑下 404。
+
+根目錄的 `.nojekyll` 是必要的，不放的話 GitHub Pages 會用 Jekyll 處理檔案。
+
+部署後記得到 Firebase 主控台 → Authentication → Settings → **Authorized domains** 加入 `shntech-eason.github.io`。
+
+### 這是公開 repo
+
+所以做了兩件事：
+
+- 程式碼裡**不寫孩子的真實姓名**，只有暱稱。全名要填的話存在雲端設定，那份不進版控
+- `assets/` 裡的汪汪隊角色圖是 Spin Master 的著作，自家使用沒問題，但這是有意識做的取捨，不是沒注意到
 
 ### 手機加到主畫面
 
-用手機瀏覽器開部署後的網址：
+用手機瀏覽器開網址：
 
 - **Android Chrome**：選單 → 加到主畫面
 - **iPhone Safari**：分享 → 加入主畫面
 
 加完會有自己的圖示、全螢幕開啟、離線也能用。
+
+因為有 Service Worker 做離線快取，**更新後第一次開會看到舊版，重新整理才會變新的**。這是離線 App 的正常行為。
 
 ---
 

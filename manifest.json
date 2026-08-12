@@ -1,7 +1,7 @@
 {
   "name": "Oaklay 汪汪好習慣救援隊",
   "short_name": "好習慣救援隊",
-  "description": "林禹欣 Oaklay 的一日作息表：完成一項就蓋一個爪印，累積點數。",
+  "description": "Oaklay 的一日作息表：完成一項就蓋一個爪印，累積點數。",
   "lang": "zh-TW",
   "dir": "ltr",
   "start_url": "./",
