@@ -27,6 +27,7 @@ const statusListeners = [];
 let db = null;
 let unsubscribes = [];
 let pushing = false;                // 首次上傳期間先不要被自己觸發
+let reconciled = false;             // 每次 attach 只跟伺服器對帳一次
 
 // ── 配對碼 ────────────────────────────────────────────────
 
@@ -133,6 +134,7 @@ function detach() {
 
 function attach(familyId) {
   detach();
+  reconciled = false;
 
   const profileRef = fb.doc(db, 'families', familyId, 'meta', 'profile');
   const recordsRef = fb.collection(db, 'families', familyId, 'records');
@@ -146,16 +148,63 @@ function attach(familyId) {
   }, (e) => setStatus('error', describeError(e))));
 
   unsubscribes.push(fb.onSnapshot(recordsRef, { includeMetadataChanges: true }, (snap) => {
+    // 對帳一定要在套用遠端資料「之前」跑，它讀的是還沒被覆蓋的本機紀錄
+    const firstServerSync = !reconciled && !snap.metadata.fromCache;
+    if (firstServerSync) {
+      reconciled = true;
+      reconcile(familyId, snap);
+    }
+
     snap.docChanges().forEach((change) => {
-      if (change.type === 'removed') Store.applyRemoteRecord(change.doc.id, null);
-      else Store.applyRemoteRecord(change.doc.id, change.doc.data());
+      if (change.type === 'removed') {
+        Store.applyRemoteRecord(change.doc.id, null);
+      } else if (reconciled && !firstServerSync) {
+        // 對過帳之後，遠端才是那一天的權威，別台的取消才傳得過來
+        Store.applyRemoteRecord(change.doc.id, change.doc.data());
+      } else {
+        // 對帳前（含離線快取）一律合併，寧可多一個章也不要弄丟
+        Store.mergeRemoteDay(change.doc.id, change.doc.data());
+      }
     });
 
     setStatus(snap.metadata.fromCache ? 'offline' : 'online',
               snap.metadata.fromCache ? '離線中，改動會先存在這台' : '已同步');
-
-    if (snap.empty && !pushing) pushAllRecords(familyId);
   }, (e) => setStatus('error', describeError(e))));
+}
+
+/**
+ * 把本機有、雲端沒有的紀錄補上去。
+ *
+ * 這台裝置可能離線好幾天才連上來，也可能是第一次同步，
+ * 不能只在雲端全空時才上傳，不然那些紀錄會永遠卡在本機。
+ *
+ * 取聯集，偏向「絕不弄丟任何一個爪印」。代價是：如果家長在 A 裝置取消了某一項，
+ * 而 B 裝置離線時還記著舊的完成狀態，B 上線後那一項會被補回來。
+ * 對貼紙表來說，寧可多一個章也不要少一個。
+ */
+function reconcile(familyId, snap) {
+  const remote = {};
+  snap.forEach((d) => { remote[d.id] = d.data(); });
+
+  const local = Store.state.records;
+  const writes = [];
+
+  Object.keys(local).forEach((dateKey) => {
+    const missing = {};
+    Object.keys(local[dateKey]).forEach((taskId) => {
+      if (!remote[dateKey] || !remote[dateKey][taskId]) missing[taskId] = local[dateKey][taskId];
+    });
+    if (Object.keys(missing).length) {
+      writes.push(fb.setDoc(fb.doc(db, 'families', familyId, 'records', dateKey), missing, { merge: true }));
+    }
+  });
+
+  if (!writes.length) return;
+
+  pushing = true;
+  Promise.all(writes)
+    .catch((e) => setStatus('error', describeError(e)))
+    .finally(() => { pushing = false; });
 }
 
 // ── 推送本機改動 ──────────────────────────────────────────
@@ -200,10 +249,28 @@ Store.subscribe((state, meta) => {
   } else if (meta.kind === 'profile') {
     pushProfile(familyId);
   } else if (meta.kind === 'all') {
-    pushProfile(familyId);
-    pushAllRecords(familyId);
+    if (meta.wipe) {
+      wipeRemoteRecords(familyId).then(() => pushProfile(familyId));
+    } else {
+      pushProfile(familyId);
+      pushAllRecords(familyId);
+    }
   }
 });
+
+/** 家長按下「清除所有紀錄」時，雲端那份也要刪掉，不然下次同步又會全部長回來 */
+async function wipeRemoteRecords(familyId) {
+  if (!db) return;
+  pushing = true;
+  try {
+    const snap = await fb.getDocs(fb.collection(db, 'families', familyId, 'records'));
+    await Promise.all(snap.docs.map((d) => fb.deleteDoc(d.ref)));
+  } catch (e) {
+    setStatus('error', describeError(e));
+  } finally {
+    pushing = false;
+  }
+}
 
 // ── 對外 API ──────────────────────────────────────────────
 

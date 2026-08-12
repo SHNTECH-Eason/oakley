@@ -831,7 +831,8 @@
   }
 
   function init() {
-    Store.load();
+    // 資料已經在 store.js 載入時讀好了，這裡不能再 load 一次：
+    // 那會蓋掉這段期間同步進來的遠端改動。
     Store.subscribe(function (state, meta) {
       if (meta && meta.origin === 'remote') onRemoteChange();
     });

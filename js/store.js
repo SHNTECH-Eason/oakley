@@ -269,6 +269,19 @@
     notify({ origin: 'remote', kind: 'record', dateKey: key });
   }
 
+  /**
+   * 遠端那天的紀錄「合併」進本機，不是覆蓋。
+   * 第一次跟伺服器對帳完成前用這個，否則這台離線期間累積、還沒上傳的紀錄
+   * 會在對帳讀到它們之前就被洗掉。
+   */
+  function mergeRemoteDay(key, data) {
+    var merged = Object.assign({}, state.records[key] || {}, data || {});
+    if (Object.keys(merged).length) state.records[key] = merged;
+    else delete state.records[key];
+    persist();
+    notify({ origin: 'remote', kind: 'record', dateKey: key });
+  }
+
   /** 作息項目與設定以遠端為準，但 PIN 保持各裝置獨立 */
   function applyRemoteProfile(profile) {
     if (!profile) return;
@@ -329,7 +342,8 @@
   function resetAll() {
     state = defaults();
     persist();
-    notify({ origin: 'local', kind: 'all' });
+    // wipe 告訴 sync 要連雲端的紀錄一起刪，否則下次同步又會整個長回來
+    notify({ origin: 'local', kind: 'all', wipe: true });
   }
 
   global.Store = {
@@ -360,6 +374,7 @@
     saveTasks: saveTasks,
 
     applyRemoteRecord: applyRemoteRecord,
+    mergeRemoteDay: mergeRemoteDay,
     applyRemoteProfile: applyRemoteProfile,
     mergeRemoteRecords: mergeRemoteRecords,
     profileForSync: profileForSync,
@@ -368,4 +383,9 @@
     importJSON: importJSON,
     resetAll: resetAll
   };
+
+  // 這裡就把資料讀進來，不能等到 DOMContentLoaded。
+  // js/sync.js 是 module，執行時機比 DOMContentLoaded 早，
+  // 如果那時 state 還是空的預設值，初次上傳就會把空資料當成真相。
+  load();
 })(window);
