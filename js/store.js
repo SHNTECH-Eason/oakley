@@ -330,8 +330,21 @@
   }
 
   /**
+   * 整份紀錄換成遠端那份。
+   * 接受別人的邀請連結時用 —— 這台原本的紀錄不該被推到對方的家庭裡去。
+   */
+  function replaceRecords(remote) {
+    state.records = {};
+    Object.keys(remote || {}).forEach(function (key) {
+      state.records[key] = remote[key];
+    });
+    persist();
+    notify({ origin: 'remote', kind: 'all' });
+  }
+
+  /**
    * 兩邊的紀錄取聯集，衝突時以遠端為準。
-   * 配對新裝置時用，確保兩邊原有的努力都不會不見。
+   * 配對自己的另一台裝置時用，確保兩邊原有的努力都不會不見。
    */
   function mergeRemoteRecords(remote) {
     Object.keys(remote || {}).forEach(function (key) {
@@ -409,6 +422,8 @@
     mergeRemoteDay: mergeRemoteDay,
     applyRemoteProfile: applyRemoteProfile,
     mergeRemoteRecords: mergeRemoteRecords,
+    replaceRecords: replaceRecords,
+    completedIds: completedIds,
     profileForSync: profileForSync,
 
     exportJSON: exportJSON,

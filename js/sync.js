@@ -16,6 +16,7 @@ import { firebaseConfig, SDK_VERSION, SYNC_ENABLED } from './firebase-config.js'
 
 const CDN = `https://www.gstatic.com/firebasejs/${SDK_VERSION}`;
 const FAMILY_KEY = 'oakley.familyId';
+const PREV_KEY = 'oakley.familyId.prev';   // 誤加入別人的邀請時，靠這個找路回來
 
 // 配對碼字母表：拿掉容易看錯的 0/O/1/I，方便在另一台裝置上手動輸入
 const ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
@@ -28,6 +29,11 @@ let db = null;
 let unsubscribes = [];
 let pushing = false;                // 首次上傳期間先不要被自己觸發
 let reconciled = false;             // 每次 attach 只跟伺服器對帳一次
+
+// 邀請連結可能在 Firebase 還沒連上時就被點開，join() 要能等它。
+// 成功或失敗都要 resolve，否則呼叫端會永遠卡住。
+let markReady;
+const ready = new Promise((resolve) => { markReady = resolve; });
 
 // ── 配對碼 ────────────────────────────────────────────────
 
@@ -92,6 +98,7 @@ async function start() {
     // 通常是完全離線、或公司網路擋掉 gstatic。App 照常運作，只是不同步。
     setStatus('error', '載不到 Firebase（離線或被網路擋住）');
     console.warn('Firebase SDK 載入失敗：', e);
+    markReady(false);
     return;
   }
 
@@ -107,10 +114,12 @@ async function start() {
   } catch (e) {
     setStatus('error', describeError(e));
     console.warn('Firebase 初始化失敗：', e);
+    markReady(false);
     return;
   }
 
   attach(getFamilyId());
+  markReady(true);
 }
 
 function describeError(e) {
@@ -290,14 +299,20 @@ async function wipeRemoteRecords(familyId) {
 // ── 對外 API ──────────────────────────────────────────────
 
 /**
- * 用配對碼加入另一台裝置的家庭。
- * 兩邊紀錄取聯集後再推回去，所以不會有人的努力被蓋掉。
+ * 用配對碼加入另一個家庭。
+ *
+ * mergeLocal = true  ：兩邊紀錄取聯集後推回去。配對「自己的另一台裝置」時用。
+ * mergeLocal = false ：只接收對方的紀錄，不上傳這台原有的。
+ *                      接受別人的邀請連結時用，否則會把自己的紀錄污染到對方家裡。
  */
-async function join(rawCode) {
+async function join(rawCode, opts) {
   const code = normalizeCode(rawCode);
   if (code.length < 8) throw new Error('配對碼看起來不完整');
-  if (!db) throw new Error('目前連不上雲端，請稍後再試');
 
+  await ready;
+  if (!db) throw new Error('目前連不上雲端，請確認網路後再試');
+
+  const mergeLocal = !!(opts && opts.mergeLocal);
   setStatus('connecting', '配對中…');
   detach();
 
@@ -307,18 +322,31 @@ async function join(rawCode) {
   const remote = {};
   recordsSnap.forEach((d) => { remote[d.id] = d.data(); });
 
+  rememberPrevious(code);
   localStorage.setItem(FAMILY_KEY, code);
-  Store.mergeRemoteRecords(remote);
+
+  if (mergeLocal) {
+    Store.mergeRemoteRecords(remote);
+  } else {
+    Store.replaceRecords(remote);
+  }
   if (profileSnap.exists()) Store.applyRemoteProfile(profileSnap.data());
 
-  pushAllRecords(code);
+  if (mergeLocal) pushAllRecords(code);
   attach(code);
   return code;
+}
+
+/** 換組之前先把舊的配對碼留起來，不然按錯就再也找不回原本的資料 */
+function rememberPrevious(nextCode) {
+  const current = getFamilyId();
+  if (current && current !== nextCode) localStorage.setItem(PREV_KEY, current);
 }
 
 /** 脫離目前的家庭，自己重新開一組（本機資料保留） */
 function unpair() {
   const id = newFamilyId();
+  rememberPrevious(id);
   localStorage.setItem(FAMILY_KEY, id);
   if (db) {
     pushProfile(id);
@@ -328,15 +356,37 @@ function unpair() {
   return id;
 }
 
+/** 分享用的網址。配對碼放在 # 片段，不會被送到伺服器、也不會留在存取紀錄裡 */
+function shareUrl(withCode) {
+  const base = location.origin + location.pathname.replace(/index\.html$/, '');
+  return withCode ? base + '#pair=' + getFamilyId() : base;
+}
+
+/** 從網址取出邀請碼，並立刻把它從網址列抹掉（避免被書籤或截圖留存） */
+function takeInviteCode() {
+  const m = /[#&]pair=([0-9A-Za-z-]+)/.exec(location.hash || '');
+  if (!m) return null;
+  history.replaceState(null, '', location.pathname + location.search);
+  const code = normalizeCode(m[1]);
+  return code === getFamilyId() ? null : code;   // 已經是自己這組就不用問了
+}
+
 window.Sync = {
   get enabled() { return SYNC_ENABLED; },
   get status() { return status; },
   get statusDetail() { return statusDetail; },
   get code() { return formatCode(getFamilyId()); },
+  get rawCode() { return getFamilyId(); },
+  get previousCode() {
+    const p = localStorage.getItem(PREV_KEY);
+    return p ? formatCode(p) : null;
+  },
   onStatus(fn) { statusListeners.push(fn); fn(status, statusDetail); },
   join,
   unpair,
-  formatCode
+  formatCode,
+  shareUrl,
+  takeInviteCode
 };
 
 start();

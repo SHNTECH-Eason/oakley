@@ -225,7 +225,12 @@
 
         <div class="sync-code" id="sync-code">————</div>
         <div class="row">
+          <button class="btn btn--primary" id="sync-share">📤 分享邀請連結</button>
           <button class="btn btn--ghost" id="sync-copy">複製配對碼</button>
+        </div>
+        <p class="card__desc" style="margin-top:10px">邀請連結內含配對碼，對方點開就會看到這份紀錄，也能修改。想讓對方擁有一份全新的空白作息表就用下面這個。</p>
+        <div class="row">
+          <button class="btn btn--ghost" id="sync-share-blank">分享空白連結</button>
         </div>
 
         <p class="card__desc" style="margin-top:14px">在這台裝置輸入另一台的配對碼，就會加入同一份紀錄（兩邊的紀錄會合併，不會有人的爪印不見）：</p>
@@ -235,6 +240,7 @@
           <button class="btn btn--primary" id="sync-join">加入</button>
           <button class="btn btn--ghost" id="sync-unpair">脫離同步</button>
         </div>
+        <p class="card__desc" id="sync-prev" hidden></p>
 
         <p class="card__desc" style="margin-top:12px">配對碼等同鑰匙，知道的人就能看到並修改紀錄，不要貼到公開的地方。</p>
       </div>
@@ -292,6 +298,23 @@
     <div class="celebrate__sub" data-zy="太棒了"></div>
     <div class="celebrate__bonus">＋<span id="celebrate-bonus">5</span> 🐾</div>
     <button class="btn btn--primary" id="celebrate-close">耶！</button>
+  </div>
+</div>
+
+<div class="modal" id="invite" hidden>
+  <div class="modal__box">
+    <div class="modal__icon">🐾</div>
+    <div class="modal__title">有人分享作息表給你</div>
+    <p class="modal__text" id="invite-text"></p>
+    <div class="sync-code" id="invite-code"></div>
+    <label class="modal__opt" id="invite-merge-row" hidden>
+      <input type="checkbox" id="invite-merge">
+      <span>把這台現有的紀錄也一起併過去</span>
+    </label>
+    <div class="row row--end">
+      <button class="btn btn--ghost" id="invite-cancel">取消</button>
+      <button class="btn btn--primary" id="invite-ok">加入</button>
+    </div>
   </div>
 </div>
 

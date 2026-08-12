@@ -722,6 +722,14 @@
     }
 
     codeBox.textContent = Sync.code;
+    renderPrevCode();
+
+    $('#sync-share').addEventListener('click', function () {
+      shareOrCopy(Sync.shareUrl(true), '點開就能看到 Oaklay 的作息表');
+    });
+    $('#sync-share-blank').addEventListener('click', function () {
+      shareOrCopy(Sync.shareUrl(false), '小朋友的作息表 App，點開就有一份全新的');
+    });
 
     Sync.onStatus(function (status, detail) {
       dot.setAttribute('data-state', status);
@@ -743,13 +751,14 @@
       }
     });
 
+    // 手動輸入配對碼＝配對「自己的另一台裝置」，所以走合併，兩邊的爪印都留著
     $('#sync-join').addEventListener('click', function () {
       var code = $('#sync-input').value.trim();
       if (!code) { toast('請先輸入配對碼'); return; }
       if (!confirm('要加入這組配對碼嗎？\n\n兩邊的紀錄會合併（不會有人的爪印不見），\n但作息項目與設定會改成對方那一份。')) return;
 
       $('#sync-join').disabled = true;
-      Sync.join(code).then(function (joined) {
+      Sync.join(code, { mergeLocal: true }).then(function (joined) {
         $('#sync-input').value = '';
         lastPawCount = null;
         renderAll();
@@ -767,6 +776,79 @@
       Sync.unpair();
       $('#sync-code').textContent = Sync.code;
       toast('已脫離，新的配對碼是 ' + Sync.code);
+    });
+  }
+
+  function renderPrevCode() {
+    var box = $('#sync-prev');
+    var prev = window.Sync && Sync.previousCode;
+    if (!prev) { box.hidden = true; return; }
+    box.hidden = false;
+    box.textContent = '上一組配對碼是 ' + prev + '　—— 如果不小心加錯了，把它貼回上面就能回去。';
+  }
+
+  /** 手機上優先叫系統分享（可以直接丟 LINE），沒有就退回複製 */
+  function shareOrCopy(url, label) {
+    if (navigator.share) {
+      navigator.share({ title: 'Oaklay 汪汪好習慣救援隊', text: label, url: url })
+        .catch(function () {});                 // 使用者按取消不算錯誤
+      return;
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(
+        function () { toast('連結已複製'); },
+        function () { window.prompt('複製這個連結：', url); }
+      );
+      return;
+    }
+    window.prompt('複製這個連結：', url);
+  }
+
+  // ── 收到邀請連結 ────────────────────────────────────────
+
+  var pendingInvite = null;
+
+  function askInvite(code) {
+    pendingInvite = code;
+
+    var days = Store.activeDays();
+    var paws = Store.totalPoints().balance;
+
+    $('#invite-code').textContent = Sync.formatCode(code);
+    $('#invite-merge').checked = false;
+
+    if (days > 0) {
+      // 這台已經在用了，預設不把自己的紀錄推過去，免得污染對方的資料
+      $('#invite-text').textContent =
+        '加入之後，這台會顯示對方的作息表與紀錄，兩邊即時同步。' +
+        '這台目前有 ' + days + ' 天紀錄、' + paws + ' 個爪印，預設不會併過去 —— ' +
+        '原本那份還留在雲端，等一下畫面上會顯示舊的配對碼，隨時可以回去。';
+      $('#invite-merge-row').hidden = false;
+    } else {
+      $('#invite-text').textContent = '加入之後，這台就會顯示對方的作息表與紀錄，兩邊即時同步。';
+      $('#invite-merge-row').hidden = true;
+    }
+    $('#invite').hidden = false;
+  }
+
+  function acceptInvite() {
+    if (!pendingInvite) { $('#invite').hidden = true; return; }
+    var btn = $('#invite-ok');
+    btn.disabled = true;
+    btn.textContent = '加入中…';
+
+    Sync.join(pendingInvite, { mergeLocal: $('#invite-merge').checked }).then(function (code) {
+      lastPawCount = null;
+      renderAll();
+      renderPrevCode();
+      toast('已加入 ' + Sync.formatCode(code));
+    }).catch(function (e) {
+      alert('加入失敗：' + (e.message || e));
+    }).then(function () {
+      $('#invite').hidden = true;
+      btn.disabled = false;
+      btn.textContent = '加入';
+      pendingInvite = null;
     });
   }
 
@@ -933,6 +1015,12 @@
     $('#update-apply').addEventListener('click', applyUpdate);
     $('#update-check').addEventListener('click', checkForUpdate);
 
+    $('#invite-ok').addEventListener('click', acceptInvite);
+    $('#invite-cancel').addEventListener('click', function () {
+      pendingInvite = null;
+      $('#invite').hidden = true;
+    });
+
     // iOS 要在使用者手勢裡才能啟動音訊，第一次碰畫面就先解鎖
     document.addEventListener('pointerdown', unlockAudio, { once: true });
 
@@ -1040,6 +1128,10 @@
     renderAll();
     resetGate();
     initServiceWorker();
+
+    // 從邀請連結進來的話問一下要不要加入。網址裡的碼在讀取當下就被抹掉了。
+    var invite = window.Sync && Sync.enabled ? Sync.takeInviteCode() : null;
+    if (invite) askInvite(invite);
   }
 
   if (document.readyState === 'loading') {
