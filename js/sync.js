@@ -217,11 +217,22 @@ function pushProfile(familyId) {
 }
 
 /** 單一欄位寫入，兩台裝置同時改同一天的不同項目才不會互相蓋掉 */
-function pushToggle(familyId, dateKey, taskId, done) {
+function pushToggle(familyId, dateKey, taskId, done, expected) {
   if (!db) return;
   const ref = fb.doc(db, 'families', familyId, 'records', dateKey);
   const value = done ? (Store.dayRecord(dateKey)[taskId] || new Date().toISOString()) : fb.deleteField();
-  fb.setDoc(ref, { [taskId]: value }, { merge: true })
+
+  const payload = { [taskId]: value };
+  if (typeof expected === 'number') payload._expected = expected;
+
+  fb.setDoc(ref, payload, { merge: true })
+    .catch((e) => setStatus('error', describeError(e)));
+}
+
+/** 一整天都被取消時，遠端那份也要刪掉，不然會留下只剩中繼欄位的空文件 */
+function deleteRemoteDay(familyId, dateKey) {
+  if (!db) return;
+  fb.deleteDoc(fb.doc(db, 'families', familyId, 'records', dateKey))
     .catch((e) => setStatus('error', describeError(e)));
 }
 
@@ -245,7 +256,11 @@ Store.subscribe((state, meta) => {
   const familyId = getFamilyId();
 
   if (meta.kind === 'record') {
-    pushToggle(familyId, meta.dateKey, meta.taskId, meta.done);
+    if (Store.state.records[meta.dateKey]) {
+      pushToggle(familyId, meta.dateKey, meta.taskId, meta.done, meta.expected);
+    } else {
+      deleteRemoteDay(familyId, meta.dateKey);
+    }
   } else if (meta.kind === 'profile') {
     pushProfile(familyId);
   } else if (meta.kind === 'all') {

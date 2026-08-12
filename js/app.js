@@ -860,7 +860,8 @@
     $('#task-add').addEventListener('click', function () {
       var idx = $$('#task-editor .editor__item').length;
       $('#task-editor').appendChild(taskEditorRow({
-        id: 'task-' + Date.now(),
+        // 加隨機字尾，避免同一毫秒連按兩次新增產生撞號的 id
+        id: 'task-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7),
         from: '12:00', to: '', label: '新任務',
         color: COLORS[idx % COLORS.length],
         icon: ICONS[idx % ICONS.length],

@@ -156,17 +156,43 @@
     return !!dayRecord(key)[taskId];
   }
 
+  /** 一天的紀錄裡以底線開頭的是中繼欄位（_expected），不是完成的項目 */
+  function completedIds(rec) {
+    return Object.keys(rec || {}).filter(function (id) {
+      return id.charAt(0) !== '_' && !!rec[id];
+    });
+  }
+
+  /**
+   * 那一天「當時應該完成幾項」。
+   *
+   * 打卡時會把當下的項目數寫進該日紀錄，之後家長改作息表就不會回頭改寫歷史。
+   * 沒有這個的話，新增一個項目會讓過去每一個全破日都失去獎勵 ——
+   * 小朋友什麼都沒做，累積的爪印數卻自己變少，這是不能接受的。
+   *
+   * 舊資料沒存過這個欄位，就退回用現行設定推算。
+   */
+  function expectedCount(d) {
+    var rec = state.records[dateKey(d)];
+    if (rec && typeof rec._expected === 'number' && rec._expected > 0) return rec._expected;
+    return tasksForDate(d).length;
+  }
+
   /** 某天的完成進度 */
   function dayStats(d) {
     var key = dateKey(d);
     var applicable = tasksForDate(d);
     var rec = dayRecord(key);
-    var done = applicable.filter(function (t) { return !!rec[t.id]; }).length;
+
+    var done = applicable.filter(function (t) { return !!rec[t.id]; }).length;  // 畫面顯示用
+    var earned = completedIds(rec).length;   // 計分用，包含後來被刪掉的項目
+    var expected = expectedCount(d);
+
     return {
       key: key,
       done: done,
       total: applicable.length,
-      perfect: applicable.length > 0 && done === applicable.length,
+      perfect: expected > 0 && earned >= expected,
       ratio: applicable.length ? done / applicable.length : 0
     };
   }
@@ -181,12 +207,11 @@
     var sum = 0;
 
     Object.keys(state.records).forEach(function (key) {
-      var rec = state.records[key];
-      var done = Object.keys(rec).filter(function (id) { return !!rec[id]; }).length;
+      var done = completedIds(state.records[key]).length;
       sum += done * per;
 
-      var applicable = tasksForDate(parseKey(key));
-      if (applicable.length && done >= applicable.length) sum += bonus;
+      var expected = expectedCount(parseKey(key));
+      if (expected > 0 && done >= expected) sum += bonus;
     });
 
     var used = state.redeemed.reduce(function (a, r) { return a + (r.cost || 0); }, 0);
@@ -213,8 +238,7 @@
   /** 有紀錄的總天數（至少完成一項） */
   function activeDays() {
     return Object.keys(state.records).filter(function (k) {
-      var rec = state.records[k];
-      return Object.keys(rec).some(function (id) { return !!rec[id]; });
+      return completedIds(state.records[k]).length > 0;
     }).length;
   }
 
@@ -227,16 +251,22 @@
 
     var rec = state.records[key];
     var nowDone = !rec[taskId];
+    var expected = tasksForDate(d).length;
 
-    if (nowDone) {
-      rec[taskId] = new Date().toISOString();
+    if (nowDone) rec[taskId] = new Date().toISOString();
+    else delete rec[taskId];
+
+    if (completedIds(rec).length) {
+      rec._expected = expected;       // 記下當下的標準，日後改作息表不影響這天
     } else {
-      delete rec[taskId];
-      if (!Object.keys(rec).length) delete state.records[key];
+      delete state.records[key];      // 整天都取消了就把這天清掉
     }
 
     persist();
-    notify({ origin: 'local', kind: 'record', dateKey: key, taskId: taskId, done: nowDone });
+    notify({
+      origin: 'local', kind: 'record',
+      dateKey: key, taskId: taskId, done: nowDone, expected: expected
+    });
     return nowDone;
   }
 
