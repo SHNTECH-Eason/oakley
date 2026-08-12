@@ -1,0 +1,40 @@
+rules_version = '2';
+
+// 貼到 Firebase 主控台 → Firestore Database → 規則 → 發布
+//
+// 安全模型：沒有帳號密碼，配對碼（familyId）就是鑰匙。
+// 規則只保證「已登入 + 知道完整配對碼」才能存取那一家的資料，
+// 而且不准列出所有家庭 —— 否則任何人都能把配對碼一次撈光。
+//
+// 配對碼是 16 位亂碼（約 80 bits），猜不出來。
+// 但這也表示：配對碼外流 = 資料外流，不要拿這裡存任何敏感資訊。
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function allowed(familyId) {
+      return request.auth != null && familyId.size() >= 12;
+    }
+
+    match /families/{familyId} {
+
+      // 家庭本身這份文件用不到，也不開放列出 families 集合
+      allow read, write: if false;
+
+      // 設定與作息項目
+      match /meta/{docId} {
+        allow read, write: if allowed(familyId);
+      }
+
+      // 每天的打卡紀錄
+      match /records/{dateKey} {
+        allow read, write: if allowed(familyId);
+      }
+    }
+
+    // 其餘一律拒絕
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
