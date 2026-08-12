@@ -190,6 +190,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .tasks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
 
 .task {
+  position: relative;
+  overflow: hidden;                  /* 讓掃過的白光被卡片圓角切齊 */
   width: 100%;
   display: flex;
   align-items: center;
@@ -267,18 +269,84 @@ button { font: inherit; color: inherit; cursor: pointer; }
   100% { transform: scale(1) rotate(0); }
 }
 
-/* 蓋章時噴出的小爪印 */
-.spark {
-  position: fixed;
+/* 卡片被蓋章時掃過的一道白光 */
+.task::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 32%, rgba(255,255,255,.7) 50%, transparent 68%);
+  transform: translateX(-130%);
+  opacity: 0;
   pointer-events: none;
-  z-index: 60;
-  width: 18px; height: 18px;
-  fill: var(--gold);
-  animation: spark .7s ease-out forwards;
 }
-@keyframes spark {
-  0%   { transform: translate(0,0) scale(.4); opacity: 1; }
-  100% { transform: translate(var(--dx), var(--dy)) scale(1.1) rotate(var(--rot)); opacity: 0; }
+.task.is-stamping::after { animation: sweep .65s ease-out; }
+@keyframes sweep {
+  0%   { transform: translateX(-130%); opacity: 1; }
+  100% { transform: translateX(130%); opacity: 0; }
+}
+
+/* ── 打卡特效圖層 ─────────────────────────────────────────
+   全部只動 transform 和 opacity，舊平板上也不會卡。       */
+
+.fx-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 90;
+  overflow: hidden;
+}
+
+/* 從蓋章處噴出的爪印與彩色紙屑：先往上噴，再被重力拉下來 */
+.fx-piece {
+  position: absolute;
+  will-change: transform, opacity;
+  animation: fx-fly var(--dur, .9s) cubic-bezier(.2,.6,.35,1) forwards;
+}
+@keyframes fx-fly {
+  0%   { transform: translate(0, 0) scale(.2) rotate(0deg); opacity: 1; }
+  35%  { transform: translate(calc(var(--dx) * .65), var(--dy)) scale(1.05) rotate(calc(var(--rot) * .35)); opacity: 1; }
+  100% { transform: translate(var(--dx), calc(var(--dy) + var(--fall))) scale(.65) rotate(var(--rot)); opacity: 0; }
+}
+
+/* 蓋章瞬間擴散的圓環 */
+.fx-ripple {
+  position: absolute;
+  border-radius: 50%;
+  border: 3px solid var(--c, #f59e0b);
+  animation: fx-ripple .6s ease-out forwards;
+}
+@keyframes fx-ripple {
+  from { transform: scale(.4); opacity: .85; }
+  to   { transform: scale(2.7); opacity: 0; }
+}
+
+/* 往上飄的「+1 🐾」 */
+.fx-float {
+  position: absolute;
+  font-size: 1.1rem;
+  font-weight: 900;
+  color: #b45309;
+  text-shadow: 0 0 6px #fff, 0 2px 5px rgba(0,0,0,.2);
+  white-space: nowrap;
+  animation: fx-float 1s cubic-bezier(.2,.8,.3,1) forwards;
+}
+@keyframes fx-float {
+  0%   { transform: translate(-50%, 4px) scale(.5); opacity: 0; }
+  25%  { transform: translate(-50%, -16px) scale(1.2); opacity: 1; }
+  100% { transform: translate(-50%, -58px) scale(1); opacity: 0; }
+}
+
+/* 全部完成時從天而降的紙屑雨 */
+.fx-rain {
+  position: absolute;
+  top: 0;
+  will-change: transform;
+  animation: fx-rain var(--dur, 2.4s) linear forwards;
+}
+@keyframes fx-rain {
+  0%   { transform: translateY(-12vh) rotate(0deg); opacity: 1; }
+  85%  { opacity: 1; }
+  100% { transform: translateY(108vh) rotate(var(--rot)); opacity: 0; }
 }
 
 /* ── 本週 ────────────────────────────────────────────────── */

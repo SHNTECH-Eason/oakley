@@ -146,23 +146,103 @@
 
   // ── 蓋章特效 ────────────────────────────────────────────
 
-  function sparkle(anchor) {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  var CONFETTI = ['#f59e0b', '#f97316', '#2563eb', '#059669', '#7c3aed', '#0d9488', '#ec4899', '#fde047'];
+  var fxLayer = null;
+
+  function fx() {
+    if (!fxLayer) {
+      fxLayer = el('div', 'fx-layer');
+      document.body.appendChild(fxLayer);
+    }
+    return fxLayer;
+  }
+
+  function reduceMotion() {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }
+
+  function pick(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+
+  function autoRemove(node, ms) {
+    setTimeout(function () { node.remove(); }, ms);
+  }
+
+  /** 蓋章瞬間：擴散圓環 + 爪印與紙屑往上噴再落下 */
+  function stampBurst(anchor, color) {
+    if (reduceMotion()) return;
     var box = anchor.getBoundingClientRect();
     var cx = box.left + box.width / 2;
     var cy = box.top + box.height / 2;
+    var layer = fx();
 
-    for (var i = 0; i < 7; i++) {
-      var s = svgIcon('paw', 'spark');
-      var angle = (Math.PI * 2 * i) / 7 + Math.random() * 0.5;
-      var dist = 46 + Math.random() * 34;
-      s.style.left = (cx - 9) + 'px';
-      s.style.top = (cy - 9) + 'px';
-      s.style.setProperty('--dx', Math.cos(angle) * dist + 'px');
-      s.style.setProperty('--dy', Math.sin(angle) * dist + 'px');
-      s.style.setProperty('--rot', Math.round(Math.random() * 360) + 'deg');
-      document.body.appendChild(s);
-      (function (node) { setTimeout(function () { node.remove(); }, 750); })(s);
+    var ring = el('div', 'fx-ripple');
+    ring.style.left = box.left + 'px';
+    ring.style.top = box.top + 'px';
+    ring.style.width = box.width + 'px';
+    ring.style.height = box.height + 'px';
+    ring.style.setProperty('--c', color);
+    layer.appendChild(ring);
+    autoRemove(ring, 700);
+
+    for (var i = 0; i < 16; i++) {
+      var piece;
+      if (i % 3 === 0) {
+        piece = svgIcon('paw', 'fx-piece');
+        piece.style.width = '19px';
+        piece.style.height = '19px';
+        piece.style.fill = (i % 2) ? '#fde047' : color;
+      } else {
+        piece = el('div', 'fx-piece');
+        var w = 6 + Math.random() * 5;
+        piece.style.width = w + 'px';
+        piece.style.height = (w * (Math.random() > 0.5 ? 1 : 1.9)) + 'px';
+        piece.style.background = pick(CONFETTI);
+        piece.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+      }
+
+      // 往上為主的扇形，再加重力把它們拉下來
+      var angle = -Math.PI / 2 + (Math.random() - 0.5) * Math.PI * 1.15;
+      var dist = 55 + Math.random() * 60;
+      piece.style.left = cx + 'px';
+      piece.style.top = cy + 'px';
+      piece.style.setProperty('--dx', Math.cos(angle) * dist + 'px');
+      piece.style.setProperty('--dy', Math.sin(angle) * dist + 'px');
+      piece.style.setProperty('--fall', (75 + Math.random() * 75) + 'px');
+      piece.style.setProperty('--rot', Math.round(Math.random() * 720 - 360) + 'deg');
+      piece.style.setProperty('--dur', (0.8 + Math.random() * 0.45) + 's');
+      layer.appendChild(piece);
+      autoRemove(piece, 1350);
+    }
+  }
+
+  /** 從蓋章處往上飄的「+1 🐾」 */
+  function floatPoints(anchor, text) {
+    if (reduceMotion()) return;
+    var box = anchor.getBoundingClientRect();
+    var node = el('div', 'fx-float', text);
+    node.style.left = (box.left + box.width / 2) + 'px';
+    node.style.top = box.top + 'px';
+    fx().appendChild(node);
+    autoRemove(node, 1050);
+  }
+
+  /** 全部完成時的紙屑雨 */
+  function confettiRain(count) {
+    if (reduceMotion()) return;
+    var layer = fx();
+    for (var i = 0; i < count; i++) {
+      var p = el('div', 'fx-rain');
+      var w = 7 + Math.random() * 7;
+      p.style.width = w + 'px';
+      p.style.height = (w * (Math.random() > 0.5 ? 1 : 2)) + 'px';
+      p.style.background = pick(CONFETTI);
+      p.style.borderRadius = Math.random() > 0.6 ? '50%' : '2px';
+      p.style.left = (Math.random() * 100) + 'vw';
+      p.style.setProperty('--rot', Math.round(Math.random() * 1080 - 540) + 'deg');
+      p.style.setProperty('--dur', (1.9 + Math.random() * 1.6) + 's');
+      p.style.animationDelay = (Math.random() * 0.9) + 's';
+      layer.appendChild(p);
+      autoRemove(p, 4500);
     }
   }
 
@@ -261,8 +341,13 @@
 
     if (nowDone) {
       btn.classList.add('is-stamping');
-      setTimeout(function () { btn.classList.remove('is-stamping'); }, 520);
-      sparkle($('.task__stamp', btn));
+      setTimeout(function () { btn.classList.remove('is-stamping'); }, 700);
+
+      var stamp = $('.task__stamp', btn);
+      var color = getComputedStyle(btn).getPropertyValue('--c').trim() || '#f59e0b';
+      stampBurst(stamp, color);
+      floatPoints(stamp, '+' + Store.state.settings.pointsPerTask + ' 🐾');
+
       play('done');
       buzz(18);
     } else {
@@ -280,8 +365,9 @@
   function showCelebrate() {
     $('#celebrate-bonus').textContent = Store.state.settings.perfectBonus;
     $('#celebrate').hidden = false;
+    confettiRain(70);
     play('perfect');
-    buzz([30, 60, 30]);
+    buzz([30, 60, 30, 60, 120]);
   }
 
   // ── 本週 ────────────────────────────────────────────────
@@ -800,6 +886,20 @@
       Store.updateChild({ nickname: $('#cfg-nick').value.trim() || 'Oaklay' });
       renderAll();
       toast('設定已儲存');
+    });
+
+    // 診斷用：直接播一次並回報 AudioContext 狀態。
+    // 「running 卻聽不到」= 裝置端問題（iPhone 靜音鍵、媒體音量），
+    // 「suspended」= 瀏覽器的自動播放限制沒解開。
+    $('#sound-test').addEventListener('click', function () {
+      // 看的是已儲存的設定，因為 play() 也是看它。只打勾沒按儲存不算數。
+      if (!Store.state.settings.sound) { toast('音效目前關閉中，請打勾並按儲存'); return; }
+      unlockAudio();
+      play('done');
+      setTimeout(function () {
+        if (!audioCtx) { toast('這個裝置不支援 Web Audio'); return; }
+        toast('已播放　狀態：' + audioCtx.state + '　音量：' + Math.round(master.gain.value * 100) + '%');
+      }, 150);
     });
 
     $('#backup-export').addEventListener('click', exportBackup);
