@@ -564,6 +564,15 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .keypad button:active { transform: scale(.94); background: #e2e8f0; }
 .keypad button.is-blank { visibility: hidden; }
 
+.gate__cancel { margin-top: 18px; }
+.gate__cancel[hidden] { display: none; }
+
+.version {
+  font-family: ui-monospace, 'Cascadia Mono', Menlo, monospace;
+  font-size: .95rem;
+  color: var(--brand);
+}
+
 .panel { display: flex; flex-direction: column; gap: 10px; }
 
 .card {

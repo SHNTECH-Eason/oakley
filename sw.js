@@ -6,7 +6,7 @@
  *
  * 改版時記得把 CACHE 的版號 +1，舊快取才會被清掉。
  */
-var CACHE = 'oakley-routine-v11';
+var CACHE = 'oakley-routine-v12';
 
 var PRECACHE = [
   './',
@@ -33,9 +33,17 @@ self.addEventListener('install', function (e) {
   );
 });
 
-// 頁面按下「更新」時才真的接手
 self.addEventListener('message', function (e) {
-  if (e.data && e.data.type === 'SKIP_WAITING') self.skipWaiting();
+  if (!e.data) return;
+
+  // 頁面按下「更新」時才真的接手
+  if (e.data.type === 'SKIP_WAITING') self.skipWaiting();
+
+  // 讓畫面顯示「現在到底是哪一版在服務我」。
+  // 回報的是這支 SW 自己的版號，所以看到什麼就真的是什麼。
+  if (e.data.type === 'GET_VERSION' && e.ports && e.ports[0]) {
+    e.ports[0].postMessage({ version: CACHE });
+  }
 });
 
 self.addEventListener('activate', function (e) {

@@ -179,6 +179,7 @@
     <div class="gate__hint" id="gate-hint">四位數字</div>
     <div class="gate__dots" id="gate-dots"><i></i><i></i><i></i><i></i></div>
     <div class="keypad" id="keypad"></div>
+    <button class="btn btn--ghost gate__cancel" id="gate-cancel" hidden>取消</button>
   </div>
 
   <div class="panel" id="parent-panel" hidden>
@@ -264,17 +265,24 @@
       <summary class="card__head">版本與更新</summary>
       <div class="card__body">
         <p class="card__desc">App 會把檔案存在裝置上所以離線也能用。有新版時畫面下方會跳出提示，也可以在這裡手動檢查。</p>
+        <div class="field-row">目前版本<b class="version" id="app-version">—</b></div>
         <div class="row">
           <button class="btn btn--ghost" id="update-check">檢查更新</button>
+          <button class="btn btn--ghost" id="update-force">強制重新下載</button>
         </div>
+        <p class="card__desc" style="margin-top:10px">「強制重新下載」會清掉離線快取重抓最新版，卡在舊版時用。打卡紀錄不受影響。</p>
       </div>
     </details>
 
     <details class="card card--danger">
-      <summary class="card__head">危險區</summary>
+      <summary class="card__head">家長密碼與危險區</summary>
       <div class="card__body">
+        <p class="card__desc" id="pin-hint"></p>
         <div class="row">
-          <button class="btn btn--ghost" id="pin-change">變更家長密碼</button>
+          <button class="btn btn--ghost" id="pin-set">設定家長密碼</button>
+          <button class="btn btn--ghost" id="pin-remove" hidden>移除密碼</button>
+        </div>
+        <div class="row">
           <button class="btn btn--danger" id="data-reset">清除所有紀錄</button>
         </div>
       </div>

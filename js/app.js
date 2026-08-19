@@ -656,10 +656,25 @@
 
   // ── 家長：PIN ───────────────────────────────────────────
 
-  function resetGate() {
+  /**
+   * 進入家長分頁。
+   *
+   * 沒設密碼就直接進去 —— 小孩是被大人遞過手機點一下，不會自己翻分頁，
+   * 每次補登都要輸入密碼只是在擋家長自己。需要鎖的人再自己去設。
+   */
+  function enterParent() {
+    if (!Store.state.settings.pin) { unlockParent(); return; }
+    if (parentUnlocked) { renderParent(); return; }
+    resetGate('verify');
+  }
+
+  function resetGate(stage) {
     pinBuffer = '';
     pinFirstEntry = '';
-    pinStage = Store.state.settings.pin ? 'verify' : 'create';
+    pinStage = stage || (Store.state.settings.pin ? 'verify' : 'create');
+    $('#pin-gate').hidden = false;
+    $('#parent-panel').hidden = true;
+    $('#gate-cancel').hidden = pinStage === 'verify';   // 設定中途才給取消
     renderGate();
   }
 
@@ -718,7 +733,7 @@
     } else {
       if (pinBuffer === pinFirstEntry) {
         Store.updateSettings({ pin: pinFirstEntry });
-        toast('密碼設定完成');
+        toast('密碼設定完成，之後進家長分頁要輸入');
         unlockParent();
       } else {
         pinStage = 'create';
@@ -738,9 +753,8 @@
 
   function lockParent() {
     parentUnlocked = false;
-    $('#pin-gate').hidden = false;
-    $('#parent-panel').hidden = true;
-    resetGate();
+    if (!Store.state.settings.pin) return;    // 沒設密碼就沒有鎖這回事
+    resetGate('verify');
   }
 
   function buildKeypad() {
@@ -764,6 +778,15 @@
     $('#cfg-sound').checked = s.settings.sound !== false;
     $('#cfg-speech').checked = !!s.settings.speech;
     if (!$('#backfill-date').value) $('#backfill-date').value = Store.dateKey(Store.today());
+
+    var hasPin = !!s.settings.pin;
+    $('#pin-set').textContent = hasPin ? '變更密碼' : '設定家長密碼';
+    $('#pin-remove').hidden = !hasPin;
+    $('#pin-hint').textContent = hasPin
+      ? '已設定密碼，進入這個分頁需要輸入。切換到其他分頁會自動上鎖。'
+      : '目前沒有設密碼，家長分頁可以直接進入。小朋友是被大人遞手機點一下，通常不需要鎖；擔心他亂按就設一組。';
+
+    readVersion();
     renderBackfill();
     renderTaskEditor();
   }
@@ -1054,7 +1077,7 @@
     if (next === 'today') renderToday();
     if (next === 'week') { weekAnchor = Store.today(); renderWeek(); }
     if (next === 'stats') { calAnchor = Store.today(); renderStats(); }
-    if (next === 'parent') { if (parentUnlocked) renderParent(); else resetGate(); }
+    if (next === 'parent') enterParent();
   }
 
   // ── 備份 ────────────────────────────────────────────────
@@ -1174,10 +1197,19 @@
       e.target.value = '';
     });
 
-    $('#pin-change').addEventListener('click', function () {
+    $('#pin-set').addEventListener('click', function () { resetGate('create'); });
+
+    $('#pin-remove').addEventListener('click', function () {
+      if (!confirm('移除家長密碼？\n\n之後任何人都能直接進入家長分頁。')) return;
       Store.updateSettings({ pin: null });
-      lockParent();
-      toast('請重新設定密碼');
+      renderParent();
+      toast('已移除密碼');
+    });
+
+    $('#gate-cancel').addEventListener('click', function () {
+      // 設定密碼設到一半反悔：有舊密碼就回鎖定，沒有就直接回面板
+      if (Store.state.settings.pin) resetGate('verify');
+      else unlockParent();
     });
 
     $('#data-reset').addEventListener('click', function () {
@@ -1196,6 +1228,7 @@
 
     $('#update-apply').addEventListener('click', applyUpdate);
     $('#update-check').addEventListener('click', checkForUpdate);
+    $('#update-force').addEventListener('click', forceReload);
 
     $('#invite-ok').addEventListener('click', acceptInvite);
     $('#invite-cancel').addEventListener('click', function () {
@@ -1284,6 +1317,47 @@
     });
   }
 
+  /**
+   * 問正在服務這個頁面的 Service Worker 它自己是哪一版。
+   * 直接跟當事人要，看到什麼就真的是什麼 —— 不會有「以為更新了其實沒有」。
+   */
+  function readVersion() {
+    var box = $('#app-version');
+    var fallback = '未使用離線快取';
+
+    if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) {
+      box.textContent = fallback;
+      return;
+    }
+
+    var ch = new MessageChannel();
+    var timer = setTimeout(function () { box.textContent = fallback; }, 1500);
+    ch.port1.onmessage = function (ev) {
+      clearTimeout(timer);
+      var v = (ev.data && ev.data.version) || '';
+      box.textContent = v.replace(/^oakley-routine-/, '') || fallback;
+    };
+    navigator.serviceWorker.controller.postMessage({ type: 'GET_VERSION' }, [ch.port2]);
+  }
+
+  /** 卡在舊版時的逃生門：清掉 SW 與快取，換一個新網址重載，繞過所有快取層 */
+  function forceReload() {
+    if (!confirm('這會清掉離線快取並重新下載最新版。\n\n打卡紀錄存在別的地方，不會受影響。')) return;
+
+    var done = function () {
+      location.replace(location.pathname + '?r=' + Date.now());
+    };
+
+    if (!('serviceWorker' in navigator)) { done(); return; }
+
+    navigator.serviceWorker.getRegistrations()
+      .then(function (regs) { return Promise.all(regs.map(function (r) { return r.unregister(); })); })
+      .then(function () { return caches.keys(); })
+      .then(function (keys) { return Promise.all(keys.map(function (k) { return caches.delete(k); })); })
+      .catch(function () {})
+      .then(done);
+  }
+
   function checkForUpdate() {
     if (!swRegistration) { toast('這個環境不支援離線更新'); return; }
     toast('檢查中…');
@@ -1308,7 +1382,6 @@
     wire();
     lastRenderedDay = Store.dateKey(Store.today());
     renderAll();
-    resetGate();
     initServiceWorker();
 
     // 從邀請連結進來的話問一下要不要加入。網址裡的碼在讀取當下就被抹掉了。
