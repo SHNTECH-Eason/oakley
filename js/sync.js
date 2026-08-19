@@ -179,6 +179,16 @@ function attach(familyId) {
     setStatus(snap.metadata.fromCache ? 'offline' : 'online',
               snap.metadata.fromCache ? '離線中，改動會先存在這台' : '已同步');
   }, (e) => setStatus('error', describeError(e))));
+
+  // 特別獎勵：一筆一份文件，兩台同時給獎也不會互相蓋掉
+  const bonusRef = fb.collection(db, 'families', familyId, 'bonuses');
+  unsubscribes.push(fb.onSnapshot(bonusRef, (snap) => {
+    snap.docChanges().forEach((change) => {
+      if (change.type === 'removed') Store.removeRemoteBonus(change.doc.id);
+      else Store.applyRemoteBonus(change.doc.data());
+    });
+    if (snap.empty && !pushing) pushAllBonuses(familyId);
+  }, (e) => setStatus('error', describeError(e))));
 }
 
 /**
@@ -245,6 +255,29 @@ function deleteRemoteDay(familyId, dateKey) {
     .catch((e) => setStatus('error', describeError(e)));
 }
 
+function pushBonus(familyId, bonus) {
+  if (!db || !bonus) return;
+  fb.setDoc(fb.doc(db, 'families', familyId, 'bonuses', bonus.id), bonus)
+    .catch((e) => setStatus('error', describeError(e)));
+}
+
+function deleteRemoteBonus(familyId, id) {
+  if (!db || !id) return;
+  fb.deleteDoc(fb.doc(db, 'families', familyId, 'bonuses', id))
+    .catch((e) => setStatus('error', describeError(e)));
+}
+
+function pushAllBonuses(familyId) {
+  if (!db) return;
+  const list = Store.state.bonuses || [];
+  if (!list.length) return;
+
+  pushing = true;
+  Promise.all(list.map((b) => fb.setDoc(fb.doc(db, 'families', familyId, 'bonuses', b.id), b)))
+    .catch((e) => setStatus('error', describeError(e)))
+    .finally(() => { pushing = false; });
+}
+
 function pushAllRecords(familyId) {
   if (!db) return;
   const records = Store.state.records;
@@ -270,25 +303,32 @@ Store.subscribe((state, meta) => {
     } else {
       deleteRemoteDay(familyId, meta.dateKey);
     }
+  } else if (meta.kind === 'bonus') {
+    pushBonus(familyId, meta.bonus);
+  } else if (meta.kind === 'bonus-remove') {
+    deleteRemoteBonus(familyId, meta.id);
   } else if (meta.kind === 'profile') {
     pushProfile(familyId);
   } else if (meta.kind === 'all') {
     if (meta.wipe) {
-      wipeRemoteRecords(familyId).then(() => pushProfile(familyId));
+      wipeRemote(familyId).then(() => pushProfile(familyId));
     } else {
       pushProfile(familyId);
       pushAllRecords(familyId);
+      pushAllBonuses(familyId);
     }
   }
 });
 
 /** 家長按下「清除所有紀錄」時，雲端那份也要刪掉，不然下次同步又會全部長回來 */
-async function wipeRemoteRecords(familyId) {
+async function wipeRemote(familyId) {
   if (!db) return;
   pushing = true;
   try {
-    const snap = await fb.getDocs(fb.collection(db, 'families', familyId, 'records'));
-    await Promise.all(snap.docs.map((d) => fb.deleteDoc(d.ref)));
+    for (const name of ['records', 'bonuses']) {
+      const snap = await fb.getDocs(fb.collection(db, 'families', familyId, name));
+      await Promise.all(snap.docs.map((d) => fb.deleteDoc(d.ref)));
+    }
   } catch (e) {
     setStatus('error', describeError(e));
   } finally {
@@ -318,9 +358,12 @@ async function join(rawCode, opts) {
 
   const profileSnap = await fb.getDoc(fb.doc(db, 'families', code, 'meta', 'profile'));
   const recordsSnap = await fb.getDocs(fb.collection(db, 'families', code, 'records'));
+  const bonusSnap = await fb.getDocs(fb.collection(db, 'families', code, 'bonuses'));
 
   const remote = {};
   recordsSnap.forEach((d) => { remote[d.id] = d.data(); });
+  const bonuses = [];
+  bonusSnap.forEach((d) => { bonuses.push(d.data()); });
 
   rememberPrevious(code);
   localStorage.setItem(FAMILY_KEY, code);
@@ -330,9 +373,13 @@ async function join(rawCode, opts) {
   } else {
     Store.replaceRecords(remote);
   }
+  Store.mergeRemoteBonuses(bonuses, !mergeLocal);
   if (profileSnap.exists()) Store.applyRemoteProfile(profileSnap.data());
 
-  if (mergeLocal) pushAllRecords(code);
+  if (mergeLocal) {
+    pushAllRecords(code);
+    pushAllBonuses(code);
+  }
   attach(code);
   return code;
 }
@@ -351,6 +398,7 @@ function unpair() {
   if (db) {
     pushProfile(id);
     pushAllRecords(id);
+    pushAllBonuses(id);
     attach(id);
   }
   return id;

@@ -126,6 +126,19 @@
   <ul class="tasks" id="task-list"></ul>
 </section>
 
+<!-- ════ 特別獎勵 ════ -->
+<section class="view" id="view-reward">
+  <div class="reward-head">
+    <div class="reward-head__title" data-zy="特別獎勵"></div>
+    <p class="reward-head__sub">作息表以外的好表現，可以在這裡多給爪印。點一下選理由，確認後才會給出去。</p>
+  </div>
+  <ul class="rewards" id="reward-list"></ul>
+  <div class="reward-log">
+    <div class="reward-log__title">最近給過的獎勵</div>
+    <ul class="reward-log__list" id="reward-log"></ul>
+  </div>
+</section>
+
 <!-- ════ 本週 ════ -->
 <section class="view" id="view-week">
   <div class="pager">
@@ -292,9 +305,13 @@
   </div>
 </section>
 
+<!-- 常駐在內容最下方的版本號，確認裝置上跑的到底是哪一版 -->
+<div class="version-badge" id="version-badge">好習慣救援隊 <span id="version-text">—</span></div>
+
 <!-- ════ 底部分頁 ════ -->
 <nav class="tabbar">
   <button class="tab tab--active" data-view="today"><span class="tab__icon">🐾</span><span class="tab__label" data-zy="今天"></span></button>
+  <button class="tab" data-view="reward"><span class="tab__icon">🎁</span><span class="tab__label" data-zy="獎勵"></span></button>
   <button class="tab" data-view="week"><span class="tab__icon">📅</span><span class="tab__label" data-zy="本週"></span></button>
   <button class="tab" data-view="stats"><span class="tab__icon">⭐</span><span class="tab__label" data-zy="紀錄"></span></button>
   <button class="tab" data-view="parent"><span class="tab__icon">🔒</span><span class="tab__label tab__label--plain">家長</span></button>
@@ -308,6 +325,19 @@
     <div class="celebrate__sub" data-zy="太棒了"></div>
     <div class="celebrate__bonus">＋<span id="celebrate-bonus">5</span> 🐾</div>
     <button class="btn btn--primary" id="celebrate-close">耶！</button>
+  </div>
+</div>
+
+<div class="modal" id="give" hidden>
+  <div class="modal__box">
+    <div class="modal__icon" id="give-icon">🎁</div>
+    <div class="modal__title">要給這個獎勵嗎？</div>
+    <label class="field-row">理由<input type="text" id="give-reason" class="field" maxlength="20"></label>
+    <label class="field-row">爪印<input type="number" id="give-points" class="field field--num" min="1" max="99"></label>
+    <div class="row row--end">
+      <button class="btn btn--ghost" id="give-cancel">取消</button>
+      <button class="btn btn--primary" id="give-ok">⭐ 給獎勵</button>
+    </div>
   </div>
 </div>
 

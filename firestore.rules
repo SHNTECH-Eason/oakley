@@ -30,6 +30,11 @@ service cloud.firestore {
       match /records/{dateKey} {
         allow read, write: if allowed(familyId);
       }
+
+      // 作息表以外的特別獎勵
+      match /bonuses/{bonusId} {
+        allow read, write: if allowed(familyId);
+      }
     }
 
     // 其餘一律拒絕

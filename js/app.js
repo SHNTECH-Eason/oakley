@@ -547,6 +547,113 @@
     buzz([30, 60, 30, 60, 120]);
   }
 
+  // ── 特別獎勵 ────────────────────────────────────────────
+  // 這份清單目前寫死。之後若要讓家長自訂，搬進 Store 讓它跟著同步即可。
+
+  var REWARDS = [
+    { icon: 'rubble',   label: '自己收玩具', points: 3, color: 'amber'   },
+    { icon: 'chase',    label: '幫忙做家事', points: 3, color: 'orange'  },
+    { icon: 'skye',     label: '有禮貌',     points: 2, color: 'purple'  },
+    { icon: 'marshall', label: '勇敢嘗試',   points: 3, color: 'emerald' },
+    { icon: 'moon',     label: '主動看書',   points: 3, color: 'blue'    },
+    { icon: 'meal',     label: '自己吃飯',   points: 2, color: 'teal'    },
+    { icon: 'house',    label: '願意分享',   points: 2, color: 'indigo'  },
+    { icon: 'paw',      label: '特別棒',     points: 5, color: 'night'   }
+  ];
+
+  var pendingReward = null;
+
+  function renderReward() {
+    var list = $('#reward-list');
+    list.textContent = '';
+
+    REWARDS.forEach(function (r) {
+      var li = el('li');
+      var btn = el('button', 'reward');
+      btn.setAttribute('data-color', r.color);
+      btn.setAttribute('aria-label', r.label + '，' + r.points + ' 個爪印');
+
+      btn.appendChild(svgIcon(r.icon, 'reward__icon'));
+
+      var label = el('div', 'reward__label');
+      label.appendChild(Zhuyin.render(r.label));
+      btn.appendChild(label);
+
+      var pts = el('span', 'reward__points');
+      pts.appendChild(svgIcon('paw'));
+      pts.appendChild(el('span', null, '+' + r.points));
+      btn.appendChild(pts);
+
+      btn.addEventListener('click', function () { askGive(r); });
+      li.appendChild(btn);
+      list.appendChild(li);
+    });
+
+    renderRewardLog();
+  }
+
+  function renderRewardLog() {
+    var box = $('#reward-log');
+    box.textContent = '';
+    var items = Store.recentBonuses(12);
+
+    if (!items.length) {
+      box.appendChild(el('li', 'reward-log__empty', '還沒有給過特別獎勵'));
+      return;
+    }
+
+    items.forEach(function (b) {
+      var li = el('li', 'reward-log__item');
+      li.appendChild(el('span', 'reward-log__when', b.date.slice(5).replace('-', '/')));
+      li.appendChild(el('span', 'reward-log__why', b.reason));
+      li.appendChild(el('span', 'reward-log__pts', '+' + b.points + ' 🐾'));
+
+      var del = el('button', 'reward-log__del', '✕');
+      del.title = '收回這個獎勵';
+      del.addEventListener('click', function () {
+        if (!confirm('收回「' + b.reason + '」的 ' + b.points + ' 個爪印？')) return;
+        Store.removeBonus(b.id);
+        renderRewardLog();
+        renderTop();
+        toast('已收回');
+      });
+      li.appendChild(del);
+      box.appendChild(li);
+    });
+  }
+
+  /** 選了理由之後先確認，避免小朋友自己一直按 */
+  function askGive(reward) {
+    pendingReward = reward;
+    $('#give-icon').textContent = '🎁';
+    $('#give-reason').value = reward.label;
+    $('#give-points').value = reward.points;
+    $('#give').hidden = false;
+  }
+
+  function confirmGive() {
+    var reason = $('#give-reason').value.trim() || (pendingReward && pendingReward.label) || '特別棒';
+    var points = Number($('#give-points').value) || 1;
+
+    Store.addBonus(reason, points);
+    $('#give').hidden = true;
+    pendingReward = null;
+
+    renderRewardLog();
+    renderTop();
+
+    // 給獎的動靜要比一般打卡大，這是「特別」的
+    confettiRain(45);
+    play('perfect');
+    buzz([30, 60, 30, 60, 120]);
+
+    var name = (Store.state.child.nickname || '').trim();
+    var praise = name ? withName('{n}好棒！' + reason + '，加 ' + points + ' 個爪印！', name)
+                      : (reason + '，加 ' + points + ' 個爪印！');
+    toast('🎁 ' + reason + '　+' + points + ' 🐾');
+    speak(praise, 300);
+  }
+
   // ── 本週 ────────────────────────────────────────────────
 
   function renderWeek() {
@@ -1075,6 +1182,7 @@
     window.scrollTo(0, 0);
 
     if (next === 'today') renderToday();
+    if (next === 'reward') renderReward();
     if (next === 'week') { weekAnchor = Store.today(); renderWeek(); }
     if (next === 'stats') { calAnchor = Store.today(); renderStats(); }
     if (next === 'parent') enterParent();
@@ -1230,6 +1338,15 @@
     $('#update-check').addEventListener('click', checkForUpdate);
     $('#update-force').addEventListener('click', forceReload);
 
+    $('#give-ok').addEventListener('click', confirmGive);
+    $('#give-cancel').addEventListener('click', function () {
+      pendingReward = null;
+      $('#give').hidden = true;
+    });
+    $('#give').addEventListener('click', function (e) {
+      if (e.target === $('#give')) { pendingReward = null; $('#give').hidden = true; }
+    });
+
     $('#invite-ok').addEventListener('click', acceptInvite);
     $('#invite-cancel').addEventListener('click', function () {
       pendingInvite = null;
@@ -1262,6 +1379,7 @@
   function renderAll() {
     renderTop();
     renderToday();
+    if (view === 'reward') renderRewardLog();
     if (view === 'week') renderWeek();
     if (view === 'stats') renderStats();
   }
@@ -1294,6 +1412,7 @@
 
     navigator.serviceWorker.register('sw.js').then(function (reg) {
       swRegistration = reg;
+      navigator.serviceWorker.ready.then(readVersion);   // 首次安裝時 controller 稍後才出現
 
       // 上次跳出提示但沒更新就關掉了，這次進來要再提醒一次
       if (reg.waiting && navigator.serviceWorker.controller) showUpdateBar();
@@ -1322,20 +1441,21 @@
    * 直接跟當事人要，看到什麼就真的是什麼 —— 不會有「以為更新了其實沒有」。
    */
   function readVersion() {
-    var box = $('#app-version');
+    var boxes = [$('#app-version'), $('#version-text')].filter(Boolean);
+    var show = function (text) { boxes.forEach(function (b) { b.textContent = text; }); };
     var fallback = '未使用離線快取';
 
     if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) {
-      box.textContent = fallback;
+      show(fallback);
       return;
     }
 
     var ch = new MessageChannel();
-    var timer = setTimeout(function () { box.textContent = fallback; }, 1500);
+    var timer = setTimeout(function () { show(fallback); }, 1500);
     ch.port1.onmessage = function (ev) {
       clearTimeout(timer);
       var v = (ev.data && ev.data.version) || '';
-      box.textContent = v.replace(/^oakley-routine-/, '') || fallback;
+      show(v.replace(/^oakley-routine-/, '') || fallback);
     };
     navigator.serviceWorker.controller.postMessage({ type: 'GET_VERSION' }, [ch.port2]);
   }
@@ -1383,6 +1503,7 @@
     lastRenderedDay = Store.dateKey(Store.today());
     renderAll();
     initServiceWorker();
+    readVersion();
 
     // 從邀請連結進來的話問一下要不要加入。網址裡的碼在讀取當下就被抹掉了。
     var invite = window.Sync && Sync.enabled ? Sync.takeInviteCode() : null;

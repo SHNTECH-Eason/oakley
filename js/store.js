@@ -43,6 +43,7 @@
       },
       tasks: DEFAULT_TASKS.map(function (t) { return Object.assign({}, t); }),
       records: {},           // { 'YYYY-MM-DD': { taskId: ISO 時間字串 } }
+      bonuses: [],           // 作息表之外的特別獎勵 [{ id, date, reason, points, at }]
       redeemed: [],          // 預留給之後的點數兌換
       updatedAt: null
     };
@@ -130,6 +131,7 @@
     data.child = Object.assign(base.child, data.child || {});
     data.settings = Object.assign(base.settings, data.settings || {});
     data.records = data.records || {};
+    data.bonuses = Array.isArray(data.bonuses) ? data.bonuses : [];
     data.redeemed = data.redeemed || [];
     if (!Array.isArray(data.tasks) || !data.tasks.length) {
       data.tasks = base.tasks;
@@ -216,8 +218,14 @@
       if (expected > 0 && done >= expected) sum += bonus;
     });
 
+    var bonus = bonusPoints();
     var used = state.redeemed.reduce(function (a, r) { return a + (r.cost || 0); }, 0);
-    return { earned: sum, used: used, balance: sum - used };
+    return { earned: sum + bonus, routine: sum, bonus: bonus, used: used, balance: sum + bonus - used };
+  }
+
+  /** 作息表之外的特別獎勵總點數 */
+  function bonusPoints() {
+    return state.bonuses.reduce(function (a, b) { return a + (Number(b.points) || 0); }, 0);
   }
 
   /**
@@ -270,6 +278,37 @@
       dateKey: key, taskId: taskId, done: nowDone, expected: expected
     });
     return nowDone;
+  }
+
+  // ── 特別獎勵 ────────────────────────────────────────────────
+  // 作息表以外的好表現。不綁在任何一天的項目上，所以獨立存成一份清單，
+  // 對應 Firestore 的 families/{id}/bonuses/{id}，一筆一份文件才不會互相蓋掉。
+
+  function addBonus(reason, points) {
+    var b = {
+      id: 'b' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7),
+      date: dateKey(today()),
+      reason: String(reason || '特別棒').slice(0, 20),
+      points: Math.max(1, Math.min(99, Number(points) || 1)),
+      at: new Date().toISOString()
+    };
+    state.bonuses.push(b);
+    persist();
+    notify({ origin: 'local', kind: 'bonus', bonus: b });
+    return b;
+  }
+
+  function removeBonus(id) {
+    state.bonuses = state.bonuses.filter(function (b) { return b.id !== id; });
+    persist();
+    notify({ origin: 'local', kind: 'bonus-remove', id: id });
+  }
+
+  /** 最近的獎勵，新的在前面 */
+  function recentBonuses(limit) {
+    return state.bonuses.slice().sort(function (a, b) {
+      return (b.at || '').localeCompare(a.at || '');
+    }).slice(0, limit || 20);
   }
 
   function updateSettings(patch) {
@@ -329,6 +368,35 @@
     state.settings.pin = localPin;
     persist();
     notify({ origin: 'remote', kind: 'profile' });
+  }
+
+  /** 遠端來的獎勵：同 id 就覆蓋，沒有就新增 */
+  function applyRemoteBonus(b) {
+    if (!b || !b.id) return;
+    var i = state.bonuses.findIndex(function (x) { return x.id === b.id; });
+    if (i >= 0) state.bonuses[i] = b;
+    else state.bonuses.push(b);
+    persist();
+    notify({ origin: 'remote', kind: 'bonus' });
+  }
+
+  function removeRemoteBonus(id) {
+    state.bonuses = state.bonuses.filter(function (b) { return b.id !== id; });
+    persist();
+    notify({ origin: 'remote', kind: 'bonus' });
+  }
+
+  /** 配對時把遠端的獎勵清單併進來（依 id 去重） */
+  function mergeRemoteBonuses(list, replace) {
+    if (replace) state.bonuses = [];
+    (list || []).forEach(function (b) {
+      if (!b || !b.id) return;
+      var i = state.bonuses.findIndex(function (x) { return x.id === b.id; });
+      if (i >= 0) state.bonuses[i] = b;
+      else state.bonuses.push(b);
+    });
+    persist();
+    notify({ origin: 'remote', kind: 'all' });
   }
 
   /**
@@ -412,15 +480,22 @@
     isDone: isDone,
     dayStats: dayStats,
     totalPoints: totalPoints,
+    bonusPoints: bonusPoints,
+    recentBonuses: recentBonuses,
     streak: streak,
     activeDays: activeDays,
 
     toggle: toggle,
+    addBonus: addBonus,
+    removeBonus: removeBonus,
     updateSettings: updateSettings,
     updateChild: updateChild,
     saveTasks: saveTasks,
 
     applyRemoteRecord: applyRemoteRecord,
+    applyRemoteBonus: applyRemoteBonus,
+    removeRemoteBonus: removeRemoteBonus,
+    mergeRemoteBonuses: mergeRemoteBonuses,
     mergeRemoteDay: mergeRemoteDay,
     applyRemoteProfile: applyRemoteProfile,
     mergeRemoteRecords: mergeRemoteRecords,

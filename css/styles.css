@@ -462,6 +462,88 @@ button { font: inherit; color: inherit; cursor: pointer; }
   line-height: 1.7;
 }
 
+/* ── 特別獎勵 ─────────────────────────────────────────────── */
+
+.reward-head { text-align: center; margin-bottom: 14px; }
+.reward-head__title { font-size: 1.2rem; font-weight: 900; line-height: 1.7; }
+.reward-head__sub {
+  font-size: .76rem;
+  font-weight: 500;
+  color: var(--ink-soft);
+  line-height: 1.7;
+  margin: 4px 0 0;
+}
+
+.rewards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.reward {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background: var(--c-soft);
+  border: 3px solid var(--c-line);
+  border-radius: var(--radius);
+  padding: 13px 8px 11px;
+  box-shadow: var(--shadow);
+  transition: transform .12s ease;
+}
+.reward:active { transform: scale(.96); }
+.reward__icon { width: 46px; height: 46px; }
+.reward__label { font-size: .88rem; line-height: 1.7; text-align: center; }
+.reward__points {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  background: var(--c);
+  color: #fff;
+  font-size: .78rem;
+  font-weight: 900;
+  padding: 2px 10px;
+  border-radius: 999px;
+}
+.reward__points svg { width: 12px; height: 12px; fill: #fde047; }
+
+.reward-log { margin-top: 20px; }
+.reward-log__title {
+  font-size: .8rem;
+  font-weight: 900;
+  color: var(--ink-soft);
+  margin-bottom: 8px;
+}
+.reward-log__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.reward-log__item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background: var(--card);
+  border-radius: 12px;
+  padding: 9px 11px;
+  box-shadow: var(--shadow);
+  font-size: .82rem;
+  font-weight: 700;
+}
+.reward-log__when { color: var(--ink-faint); font-size: .72rem; font-weight: 500; flex-shrink: 0; }
+.reward-log__why { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.reward-log__pts { color: var(--gold); font-weight: 900; flex-shrink: 0; }
+.reward-log__del {
+  background: none;
+  border: none;
+  color: var(--ink-faint);
+  font-size: 1rem;
+  padding: 2px 4px;
+  flex-shrink: 0;
+}
+.reward-log__empty { font-size: .78rem; font-weight: 500; color: var(--ink-faint); text-align: center; padding: 14px 0; }
+
 /* ── 紀錄 ────────────────────────────────────────────────── */
 
 .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 14px; }
@@ -738,6 +820,19 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .editor__weekday input { display: none; }
 .editor__weekday input:checked + span { color: #fff; }
 .editor__weekday label:has(input:checked) { background: var(--brand); color: #fff; }
+
+.version-badge {
+  text-align: center;
+  font-size: .65rem;
+  font-weight: 500;
+  color: var(--ink-faint);
+  padding: 4px 0 10px;
+  letter-spacing: .02em;
+}
+.version-badge span {
+  font-family: ui-monospace, 'Cascadia Mono', Menlo, monospace;
+  font-weight: 700;
+}
 
 /* ── 底部分頁列 ───────────────────────────────────────────── */
 
