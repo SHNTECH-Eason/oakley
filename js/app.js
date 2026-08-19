@@ -515,7 +515,7 @@
     stampBurst($('.task__stamp', btn), taskColor(btn), 10);
     play('replay');
     buzz(12);
-    speak('已經完成囉！', 260);
+    speak('已經完成', 260);
   }
 
   var praiseTimer;
