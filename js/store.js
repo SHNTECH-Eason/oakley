@@ -37,7 +37,9 @@
         pin: null,           // 家長 PIN。故意不上傳，每台裝置各自設定
         pointsPerTask: 1,    // 每完成一項的爪印數
         perfectBonus: 5,     // 當日全部完成的額外爪印
-        sound: true          // 打卡音效（睡前那一項會響，可以關掉）
+        sound: true,         // 打卡音效（睡前那一項會響，可以關掉）
+        speech: false        // 念出項目名稱與稱讚。五歲還不識字，聽比看有用，
+                             // 但合成語音有機械感，所以預設關閉讓家長自己決定
       },
       tasks: DEFAULT_TASKS.map(function (t) { return Object.assign({}, t); }),
       records: {},           // { 'YYYY-MM-DD': { taskId: ISO 時間字串 } }

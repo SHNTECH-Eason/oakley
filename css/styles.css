@@ -185,6 +185,18 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .progress__title { font-size: 1.05rem; font-weight: 900; line-height: 1.5; }
 .progress__sub { font-size: .8rem; color: var(--ink-soft); font-weight: 500; margin-top: 3px; }
 
+/* 稱讚語短暫蓋在進度說明上 */
+.progress__sub.is-praise {
+  font-size: 1.05rem;
+  font-weight: 900;
+  color: var(--accent);
+  animation: praise-in .4s cubic-bezier(.3,1.5,.6,1);
+}
+@keyframes praise-in {
+  0%   { transform: scale(.6) rotate(-4deg); opacity: 0; }
+  100% { transform: scale(1) rotate(0); opacity: 1; }
+}
+
 /* ── 今天：項目卡 ─────────────────────────────────────────── */
 
 .tasks { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
@@ -206,6 +218,13 @@ button { font: inherit; color: inherit; cursor: pointer; }
 }
 .task:active { transform: scale(.975); }
 .task.is-done { background: var(--c); border-color: var(--c); }
+
+/* 只剩這一項沒完成時輕輕發光，告訴小朋友下一個做什麼 */
+.task--last { animation: last-glow 1.6s ease-in-out infinite; }
+@keyframes last-glow {
+  0%, 100% { box-shadow: var(--shadow); }
+  50%      { box-shadow: 0 0 0 5px color-mix(in srgb, var(--c) 28%, transparent), var(--shadow); }
+}
 
 .task__icon {
   width: 46px; height: 46px;
@@ -334,6 +353,13 @@ button { font: inherit; color: inherit; cursor: pointer; }
   0%   { transform: translate(-50%, 4px) scale(.5); opacity: 0; }
   25%  { transform: translate(-50%, -16px) scale(1.2); opacity: 1; }
   100% { transform: translate(-50%, -58px) scale(1); opacity: 0; }
+}
+
+/* 少見的驚喜：字更大、金色 */
+.fx-float--rare {
+  font-size: 1.45rem;
+  color: #b45309;
+  animation-duration: 1.3s;
 }
 
 /* 全部完成時從天而降的紙屑雨 */

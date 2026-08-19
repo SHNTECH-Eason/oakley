@@ -117,27 +117,85 @@
     osc.stop(startAt + dur + 0.02);
   }
 
-  function play(kind) {
+  /** 半音位移，用來讓音高隨進度爬升 */
+  function semis(base, n) { return base * Math.pow(2, n / 12); }
+
+  /**
+   * level 是今天的完成比例 0–1。
+   * 每次都一模一樣的聲音，一個禮拜就變壁紙了；讓音高隨著進度往上爬，
+   * 小朋友會直覺感覺到「越來越接近了」。
+   */
+  function play(kind, level) {
     if (!Store.state.settings.sound) return;
     if (!ensureAudio()) return;
 
     // 排在稍微之後，讓 resume() 有時間完成，不然第一聲會缺角
     var t = audioCtx.currentTime + 0.02;
+    var lv = typeof level === 'number' ? level : 0;
 
     if (kind === 'done') {
-      // 清脆上行三音，像蓋章的「叮鈴」
-      tone(784, t, 0.10, 0.5);
-      tone(1046, t + 0.06, 0.14, 0.45);
-      tone(1568, t + 0.12, 0.26, 0.32);
-    } else if (kind === 'undo') {
-      tone(494, t, 0.10, 0.3);
-      tone(370, t + 0.07, 0.16, 0.26);
+      var root = semis(784, Math.round(lv * 5));      // 越接近全破，音越高
+      tone(root, t, 0.10, 0.5);
+      tone(root * 4 / 3, t + 0.06, 0.14, 0.45);
+      tone(root * 2, t + 0.12, 0.26, 0.34);
+      if (lv >= 0.6) tone(root * 3, t + 0.19, 0.30, 0.22, 'sine');
+    } else if (kind === 'rare') {
+      // 少見的驚喜音，閃亮亮的上行琶音
+      [1046, 1318, 1568, 2093, 2637].forEach(function (f, i) {
+        tone(f, t + i * 0.055, 0.34, 0.34, 'sine');
+      });
+    } else if (kind === 'almost') {
+      // 只剩一個：兩個往上吊的音，製造「快到了」的期待
+      tone(880, t, 0.14, 0.4);
+      tone(1174, t + 0.11, 0.34, 0.4);
     } else if (kind === 'perfect') {
       [523, 659, 784, 1046, 1318].forEach(function (f, i) {
         tone(f, t + i * 0.10, 0.42, 0.45);
       });
       tone(2093, t + 0.52, 0.7, 0.3, 'sine');
+      tone(1568, t + 0.60, 0.8, 0.24, 'sine');
+    } else if (kind === 'replay') {
+      // 再看一次：溫和的兩音，不搶戲
+      tone(1046, t, 0.09, 0.32);
+      tone(1568, t + 0.07, 0.20, 0.24);
     }
+  }
+
+  // ── 語音 ────────────────────────────────────────────────
+  // 五歲還不太識字，聽得懂比看得懂重要。預設關閉，家長模式可開。
+
+  var zhVoice = null;
+
+  function pickVoice() {
+    if (zhVoice) return zhVoice;
+    if (!('speechSynthesis' in window)) return null;
+    var voices = speechSynthesis.getVoices() || [];
+    // 優先台灣中文，退而求其次任何中文
+    zhVoice = voices.filter(function (v) { return /zh[-_]TW/i.test(v.lang); })[0] ||
+              voices.filter(function (v) { return /^zh/i.test(v.lang); })[0] || null;
+    return zhVoice;
+  }
+
+  function speak(text, delay) {
+    if (!Store.state.settings.speech) return;
+    if (!('speechSynthesis' in window)) return;
+    setTimeout(function () {
+      try {
+        speechSynthesis.cancel();               // 連點時不要疊在一起
+        var u = new SpeechSynthesisUtterance(text);
+        u.lang = 'zh-TW';
+        u.rate = 0.95;
+        u.pitch = 1.2;                          // 高一點比較像在跟小孩說話
+        var v = pickVoice();
+        if (v) u.voice = v;
+        speechSynthesis.speak(u);
+      } catch (e) {}
+    }, delay || 0);
+  }
+
+  if ('speechSynthesis' in window) {
+    // 有些瀏覽器要等這個事件才拿得到語音清單
+    speechSynthesis.addEventListener('voiceschanged', function () { zhVoice = null; pickVoice(); });
   }
 
   function buzz(ms) {
@@ -167,9 +225,10 @@
     setTimeout(function () { node.remove(); }, ms);
   }
 
-  /** 蓋章瞬間：擴散圓環 + 爪印與紙屑往上噴再落下 */
-  function stampBurst(anchor, color) {
+  /** 蓋章瞬間：擴散圓環 + 爪印與紙屑往上噴再落下。count 隨進度加大 */
+  function stampBurst(anchor, color, count) {
     if (reduceMotion()) return;
+    var n = count || 16;
     var box = anchor.getBoundingClientRect();
     var cx = box.left + box.width / 2;
     var cy = box.top + box.height / 2;
@@ -184,7 +243,7 @@
     layer.appendChild(ring);
     autoRemove(ring, 700);
 
-    for (var i = 0; i < 16; i++) {
+    for (var i = 0; i < n; i++) {
       var piece;
       if (i % 3 === 0) {
         piece = svgIcon('paw', 'fx-piece');
@@ -216,10 +275,10 @@
   }
 
   /** 從蓋章處往上飄的「+1 🐾」 */
-  function floatPoints(anchor, text) {
+  function floatPoints(anchor, text, rare) {
     if (reduceMotion()) return;
     var box = anchor.getBoundingClientRect();
-    var node = el('div', 'fx-float', text);
+    var node = el('div', 'fx-float' + (rare ? ' fx-float--rare' : ''), text);
     node.style.left = (box.left + box.width / 2) + 'px';
     node.style.top = box.top + 'px';
     fx().appendChild(node);
@@ -276,6 +335,25 @@
     var key = Store.dateKey(day);
     var list = $('#task-list');
 
+    // 我們自己寫上雲端的資料會回彈成 remote 事件觸發重繪。
+    // 如果項目本身沒變，就只更新狀態不重建 DOM —— 重建會把正在播的
+    // 蓋章動畫連同節點一起砍掉，小朋友只會看到閃一下。
+    var existing = $$('#task-list .task');
+    var sameShape = existing.length === tasks.length && tasks.every(function (t, i) {
+      return existing[i].dataset.task === t.id;
+    });
+
+    if (sameShape) {
+      tasks.forEach(function (t, i) {
+        var done = Store.isDone(key, t.id);
+        existing[i].classList.toggle('is-done', done);
+        existing[i].setAttribute('aria-pressed', done ? 'true' : 'false');
+      });
+      renderProgress();
+      markNextTask();
+      return;
+    }
+
     list.textContent = '';
 
     tasks.forEach(function (task, idx) {
@@ -303,12 +381,13 @@
       stamp.appendChild(svgIcon('paw'));
       btn.appendChild(stamp);
 
-      btn.addEventListener('click', function () { onToggle(task, btn); });
+      btn.addEventListener('click', function () { onTaskTap(task, btn); });
       li.appendChild(btn);
       list.appendChild(li);
     });
 
     renderProgress();
+    markNextTask();
   }
 
   function renderProgress() {
@@ -323,43 +402,120 @@
 
     Zhuyin.fill($('#progress-title'), stats.perfect ? '太棒了' : '今天的任務');
 
+    // 稱讚語正在顯示時不要蓋掉它，等它自己退場
+    var subEl = $('#progress-sub');
+    if (subEl.classList.contains('is-praise')) return;
+
     var left = stats.total - stats.done;
     var sub;
     if (stats.perfect) sub = '今天全部完成，好厲害！';
     else if (stats.done === 0) sub = '一起出發吧，共 ' + stats.total + ' 個任務';
     else sub = '已完成 ' + stats.done + ' 個，還差 ' + left + ' 個';
-    $('#progress-sub').textContent = sub;
+    subEl.textContent = sub;
   }
 
-  function onToggle(task, btn) {
+  var PRAISE = ['好棒', '太厲害了', '做得好', '你好棒', '厲害喔', '超棒的', '很棒喔', '完成了'];
+  var PRAISE_RARE = ['哇！超級棒！', '太強了！', '完美！'];
+
+  /** 把「刷牙/洗臉」念成「刷牙、洗臉」 */
+  function speakableLabel(label) {
+    return label.replace(/\s*\/\s*/g, '、');
+  }
+
+  function taskColor(btn) {
+    return getComputedStyle(btn).getPropertyValue('--c').trim() || '#f59e0b';
+  }
+
+  /**
+   * 點一下作息項目。
+   *
+   * 已完成再點「不會取消」，只會再放一次慶祝。
+   * 五歲小孩會因為好玩再戳一次自己剛蓋的章，不能讓他親手把爪印刪掉。
+   * 真的要取消請走家長模式的補登。
+   */
+  function onTaskTap(task, btn) {
     var day = Store.today();
-    var wasPerfect = Store.dayStats(day).perfect;
-    var nowDone = Store.toggle(day, task.id);
 
-    btn.classList.toggle('is-done', nowDone);
-    btn.setAttribute('aria-pressed', nowDone ? 'true' : 'false');
-
-    if (nowDone) {
-      btn.classList.add('is-stamping');
-      setTimeout(function () { btn.classList.remove('is-stamping'); }, 700);
-
-      var stamp = $('.task__stamp', btn);
-      var color = getComputedStyle(btn).getPropertyValue('--c').trim() || '#f59e0b';
-      stampBurst(stamp, color);
-      floatPoints(stamp, '+' + Store.state.settings.pointsPerTask + ' 🐾');
-
-      play('done');
-      buzz(18);
-    } else {
-      play('undo');
+    if (Store.isDone(Store.dateKey(day), task.id)) {
+      replayCelebration(task, btn);
+      return;
     }
+
+    var wasPerfect = Store.dayStats(day).perfect;
+    Store.toggle(day, task.id);
+
+    btn.classList.add('is-done');
+    btn.setAttribute('aria-pressed', 'true');
+
+    var stats = Store.dayStats(day);
+    var level = stats.total ? stats.done / stats.total : 0;
+    var rare = Math.random() < 0.14;             // 偶爾來個驚喜，避免變成壁紙
+
+    btn.classList.add('is-stamping');
+    setTimeout(function () { btn.classList.remove('is-stamping'); }, 700);
+
+    var stamp = $('.task__stamp', btn);
+    var color = taskColor(btn);
+
+    // 越接近全破，粒子越多、噴得越開
+    stampBurst(stamp, color, Math.round(12 + level * 14) * (rare ? 2 : 1));
+    floatPoints(stamp, (rare ? '✨ ' : '') + '+' + Store.state.settings.pointsPerTask + ' 🐾' + (rare ? ' ✨' : ''), rare);
+
+    play(rare ? 'rare' : 'done', level);
+    buzz(rare ? [20, 40, 20] : 18);
 
     renderProgress();
     renderTop();
+    markNextTask();
 
-    if (!wasPerfect && Store.dayStats(day).perfect) {
-      setTimeout(showCelebrate, 380);
+    var nowPerfect = Store.dayStats(day).perfect;
+    var oneLeft = !nowPerfect && stats.total - stats.done === 1;
+    var praise = rare ? pick(PRAISE_RARE) : pick(PRAISE);
+
+    if (nowPerfect) {
+      flashPraise('全部完成！');
+      speak('全部完成！今天好棒！', 420);
+    } else if (oneLeft) {
+      flashPraise('只剩最後一個囉！');
+      setTimeout(function () { play('almost', 1); }, 520);
+      speak(speakableLabel(task.label) + '，完成！只剩最後一個囉！', 500);
+    } else {
+      flashPraise(praise + '！');
+      speak(speakableLabel(task.label) + '，完成！' + praise + '！', 460);
     }
+
+    if (!wasPerfect && nowPerfect) setTimeout(showCelebrate, 380);
+  }
+
+  /** 已完成的項目再點：重播慶祝，不動資料 */
+  function replayCelebration(task, btn) {
+    btn.classList.add('is-stamping');
+    setTimeout(function () { btn.classList.remove('is-stamping'); }, 700);
+    stampBurst($('.task__stamp', btn), taskColor(btn), 10);
+    play('replay');
+    buzz(12);
+    speak(speakableLabel(task.label) + '，已經完成囉！');
+  }
+
+  var praiseTimer;
+
+  /** 稱讚語短暫蓋在進度說明上，1.8 秒後恢復 */
+  function flashPraise(text) {
+    var sub = $('#progress-sub');
+    sub.textContent = text;
+    sub.classList.add('is-praise');
+    clearTimeout(praiseTimer);
+    praiseTimer = setTimeout(function () {
+      sub.classList.remove('is-praise');
+      renderProgress();
+    }, 1800);
+  }
+
+  /** 只剩一項時讓那張卡輕輕發光，告訴他下一個要做什麼 */
+  function markNextTask() {
+    var pending = $$('#task-list .task:not(.is-done)');
+    $$('#task-list .task').forEach(function (b) { b.classList.remove('task--last'); });
+    if (pending.length === 1) pending[0].classList.add('task--last');
   }
 
   function showCelebrate() {
@@ -585,6 +741,7 @@
     $('#cfg-bonus').value = s.settings.perfectBonus;
     $('#cfg-nick').value = s.child.nickname || '';
     $('#cfg-sound').checked = s.settings.sound !== false;
+    $('#cfg-speech').checked = !!s.settings.speech;
     if (!$('#backfill-date').value) $('#backfill-date').value = Store.dateKey(Store.today());
     renderBackfill();
     renderTaskEditor();
@@ -964,7 +1121,8 @@
       Store.updateSettings({
         pointsPerTask: Math.max(1, Number($('#cfg-per').value) || 1),
         perfectBonus: Math.max(0, Number($('#cfg-bonus').value) || 0),
-        sound: $('#cfg-sound').checked
+        sound: $('#cfg-sound').checked,
+        speech: $('#cfg-speech').checked
       });
       Store.updateChild({ nickname: $('#cfg-nick').value.trim() || 'Oaklay' });
       renderAll();
@@ -978,10 +1136,13 @@
       // 看的是已儲存的設定，因為 play() 也是看它。只打勾沒按儲存不算數。
       if (!Store.state.settings.sound) { toast('音效目前關閉中，請打勾並按儲存'); return; }
       unlockAudio();
-      play('done');
+      play('done', 0.5);
+      speak('刷牙洗臉，完成！好棒喔！', 420);
       setTimeout(function () {
         if (!audioCtx) { toast('這個裝置不支援 Web Audio'); return; }
-        toast('已播放　狀態：' + audioCtx.state + '　音量：' + Math.round(master.gain.value * 100) + '%');
+        var voice = pickVoice();
+        toast('已播放　狀態：' + audioCtx.state +
+              '　語音：' + (!Store.state.settings.speech ? '關閉' : (voice ? voice.name : '找不到中文語音')));
       }, 150);
     });
 
