@@ -417,11 +417,6 @@
   var PRAISE = ['好棒', '太厲害了', '做得好', '你好棒', '厲害喔', '超棒的', '很棒喔', '完成了'];
   var PRAISE_RARE = ['哇！超級棒！', '太強了！', '完美！'];
 
-  /** 把「刷牙/洗臉」念成「刷牙、洗臉」 */
-  function speakableLabel(label) {
-    return label.replace(/\s*\/\s*/g, '、');
-  }
-
   function taskColor(btn) {
     return getComputedStyle(btn).getPropertyValue('--c').trim() || '#f59e0b';
   }
@@ -449,7 +444,7 @@
 
     var stats = Store.dayStats(day);
     var level = stats.total ? stats.done / stats.total : 0;
-    var rare = Math.random() < 0.14;             // 偶爾來個驚喜，避免變成壁紙
+    var rare = Math.random() < 0.33;             // 約每三次一次的驚喜，避免變成壁紙
 
     btn.classList.add('is-stamping');
     setTimeout(function () { btn.classList.remove('is-stamping'); }, 700);
@@ -472,16 +467,18 @@
     var oneLeft = !nowPerfect && stats.total - stats.done === 1;
     var praise = rare ? pick(PRAISE_RARE) : pick(PRAISE);
 
+    // 只念稱讚，不念項目名稱 —— 大人本來就在旁邊，他知道自己剛做完什麼，
+    // 念一長串名稱反而拖慢那一刻的節奏
     if (nowPerfect) {
       flashPraise('全部完成！');
-      speak('全部完成！今天好棒！', 420);
+      speak('全部完成！今天好棒！', 400);
     } else if (oneLeft) {
       flashPraise('只剩最後一個囉！');
       setTimeout(function () { play('almost', 1); }, 520);
-      speak(speakableLabel(task.label) + '，完成！只剩最後一個囉！', 500);
+      speak('只剩最後一個囉！', 440);
     } else {
       flashPraise(praise + '！');
-      speak(speakableLabel(task.label) + '，完成！' + praise + '！', 460);
+      speak(praise + '！', 400);
     }
 
     if (!wasPerfect && nowPerfect) setTimeout(showCelebrate, 380);
@@ -494,7 +491,7 @@
     stampBurst($('.task__stamp', btn), taskColor(btn), 10);
     play('replay');
     buzz(12);
-    speak(speakableLabel(task.label) + '，已經完成囉！');
+    speak('已經完成囉！', 260);
   }
 
   var praiseTimer;
@@ -1137,7 +1134,7 @@
       if (!Store.state.settings.sound) { toast('音效目前關閉中，請打勾並按儲存'); return; }
       unlockAudio();
       play('done', 0.5);
-      speak('刷牙洗臉，完成！好棒喔！', 420);
+      speak('好棒喔！', 400);
       setTimeout(function () {
         if (!audioCtx) { toast('這個裝置不支援 Web Audio'); return; }
         var voice = pickVoice();
