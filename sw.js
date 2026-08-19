@@ -6,7 +6,7 @@
  *
  * 改版時記得把 CACHE 的版號 +1，舊快取才會被清掉。
  */
-var CACHE = 'oakley-routine-v9';
+var CACHE = 'oakley-routine-v10';
 
 var PRECACHE = [
   './',

@@ -414,8 +414,29 @@
     subEl.textContent = sub;
   }
 
-  var PRAISE = ['好棒', '太厲害了', '做得好', '你好棒', '厲害喔', '超棒的', '很棒喔', '完成了'];
+  var PRAISE = ['好棒！', '太厲害了！', '做得好！', '你好棒！', '厲害喔！', '超棒的！', '很棒喔！', '完成了！'];
   var PRAISE_RARE = ['哇！超級棒！', '太強了！', '完美！'];
+
+  // 叫名字的版本。偶爾出現就好 —— 每次都叫反而變成口頭禪，
+  // 偶爾出現才會有「這是在跟我說話」的感覺。
+  var PRAISE_NAMED = ['{n}好棒！', '{n}好厲害！', '{n}做得真好！', '{n}太棒了！', '{n}超厲害！'];
+
+  /** 中文名字直接接，英文名字要留空格才不會黏在一起 */
+  function withName(template, name) {
+    var glue = /^[一-鿿]+$/.test(name) ? name : name + ' ';
+    return template.replace('{n}', glue);
+  }
+
+  function pickPraise(rare) {
+    var name = (Store.state.child.nickname || '').trim();
+
+    if (rare) {
+      if (name && Math.random() < 0.5) return withName('哇！{n}超級棒！', name);
+      return pick(PRAISE_RARE);
+    }
+    if (name && Math.random() < 0.35) return withName(pick(PRAISE_NAMED), name);
+    return pick(PRAISE);
+  }
 
   function taskColor(btn) {
     return getComputedStyle(btn).getPropertyValue('--c').trim() || '#f59e0b';
@@ -465,20 +486,23 @@
 
     var nowPerfect = Store.dayStats(day).perfect;
     var oneLeft = !nowPerfect && stats.total - stats.done === 1;
-    var praise = rare ? pick(PRAISE_RARE) : pick(PRAISE);
 
     // 只念稱讚，不念項目名稱 —— 大人本來就在旁邊，他知道自己剛做完什麼，
     // 念一長串名稱反而拖慢那一刻的節奏
     if (nowPerfect) {
-      flashPraise('全部完成！');
-      speak('全部完成！今天好棒！', 400);
+      // 一天只有一次，這句一定叫名字
+      var name = (Store.state.child.nickname || '').trim();
+      var done = name ? withName('全部完成！{n}今天好棒！', name) : '全部完成！今天好棒！';
+      flashPraise(done);
+      speak(done, 400);
     } else if (oneLeft) {
       flashPraise('只剩最後一個囉！');
       setTimeout(function () { play('almost', 1); }, 520);
       speak('只剩最後一個囉！', 440);
     } else {
-      flashPraise(praise + '！');
-      speak(praise + '！', 400);
+      var praise = pickPraise(rare);
+      flashPraise(praise);
+      speak(praise, 400);
     }
 
     if (!wasPerfect && nowPerfect) setTimeout(showCelebrate, 380);
