@@ -11,6 +11,9 @@ Desktop.ini
 # 本機備份匯出的檔案
 oakley-作息紀錄-*.json
 
+# 開發時的暫存（影片素材、去背預覽）
+_tmp/
+
 # 原始素材：檔名有空白括號，且海報上有孩子的真實姓名，不進版控
 kids_routine_poster*.html
 *.pdf

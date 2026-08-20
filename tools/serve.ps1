@@ -59,6 +59,30 @@ while ($listener.IsListening) {
         $req = $ctx.Request
         $res = $ctx.Response
 
+        # Dev helper: let the page POST canvas data back so it can be saved as a
+        # file for visual inspection. Writes into _tmp only, filename sanitised.
+        if ($req.HttpMethod -eq 'POST' -and $req.Url.AbsolutePath -eq '/__save') {
+            $name = $req.QueryString['name']
+            if (-not $name) { $name = 'upload.bin' }
+            $name = ($name -replace '[^A-Za-z0-9._-]', '_')
+            $dir = Join-Path $Root '_tmp'
+            if (-not (Test-Path $dir)) { New-Item -ItemType Directory -Path $dir | Out-Null }
+
+            $ms = New-Object System.IO.MemoryStream
+            $req.InputStream.CopyTo($ms)
+            [System.IO.File]::WriteAllBytes((Join-Path $dir $name), $ms.ToArray())
+            $ms.Dispose()
+
+            $res.StatusCode = 200
+            $res.ContentType = 'text/plain'
+            $ok = [System.Text.Encoding]::UTF8.GetBytes("saved _tmp/$name")
+            $res.ContentLength64 = $ok.Length
+            $res.OutputStream.Write($ok, 0, $ok.Length)
+            $res.OutputStream.Close()
+            Write-Host ("SAVE _tmp/{0}" -f $name)
+            continue
+        }
+
         $rel = [System.Uri]::UnescapeDataString($req.Url.AbsolutePath).TrimStart('/')
         if ($rel -eq '') { $rel = 'index.html' }
         $rel = $rel -replace '/', '\'

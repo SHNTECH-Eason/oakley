@@ -839,15 +839,26 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .buddy[hidden] { display: none; }
 .buddy.is-leaving { animation: buddy-out .35s ease-in both; }
 
-.buddy__img {
-  width: 108px;
-  height: 108px;
-  object-fit: contain;
+/**
+ * 天天的動畫是一張 18 格的精靈圖（3600×200，每格正方）。
+ * background-size 用 auto 100% 讓每一格剛好等於元素寬度，
+ * 位移就能直接用 --cell 的倍數算，換尺寸不用改動畫。
+ */
+.buddy__art {
+  --cell: 108px;
+  --frames: 18;
+  width: var(--cell);
+  height: var(--cell);
+  flex-shrink: 0;
+  background: url('../assets/skye-cheer.webp') 0 0 / auto 100% no-repeat;
   filter: drop-shadow(0 6px 10px rgba(15,23,42,.3));
-  transform-origin: 50% 100%;
-  animation: buddy-wiggle .6s ease-in-out .25s 2;
+  animation: cheer 1.5s steps(18) infinite;
 }
-.buddy--big .buddy__img { width: 148px; height: 148px; }
+.buddy--big .buddy__art { --cell: 148px; }
+
+@keyframes cheer {
+  to { background-position-x: calc(var(--cell) * -1 * var(--frames)); }
+}
 
 .buddy__bubble {
   position: relative;
@@ -906,17 +917,14 @@ button { font: inherit; color: inherit; cursor: pointer; }
   100% { transform: scale(1) translateY(0); opacity: 1; }
 }
 
-/* 慶祝畫面裡的主角也跳一下 */
-.celebrate__hero { animation: hero-hop 1s ease-in-out .2s 2; }
-@keyframes hero-hop {
-  0%, 100% { transform: translateY(0) rotate(0); }
-  30%      { transform: translateY(-12px) rotate(-5deg); }
-  60%      { transform: translateY(0) rotate(5deg); }
+@media (max-width: 380px) {
+  .buddy__art { --cell: 92px; }
+  .buddy__bubble { font-size: .88rem; max-width: 42vw; }
 }
 
-@media (max-width: 380px) {
-  .buddy__img { width: 92px; height: 92px; }
-  .buddy__bubble { font-size: .88rem; max-width: 42vw; }
+@media (prefers-reduced-motion: reduce) {
+  /* 停在第一格，還是看得到天天，只是不動 */
+  .buddy__art { animation: none; }
 }
 
 .version-badge {
@@ -990,7 +998,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   0% { transform: scale(.6) rotate(-6deg); opacity: 0; }
   100% { transform: scale(1) rotate(0); opacity: 1; }
 }
-.celebrate__hero { width: 118px; height: 118px; object-fit: contain; }
+.celebrate__hero { --cell: 132px; margin: 0 auto 2px; }
 .celebrate__title { font-size: 1.45rem; font-weight: 900; color: var(--brand-dark); margin-top: 2px; }
 .celebrate__sub { font-size: 1.05rem; color: var(--accent); margin-top: 4px; }
 .celebrate__bonus {

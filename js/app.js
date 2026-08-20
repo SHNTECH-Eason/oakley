@@ -287,37 +287,22 @@
 
   // ── 汪汪隊夥伴 ──────────────────────────────────────────
 
-  var BUDDIES = [
-    { img: 'assets/marshall.png', name: '毛毛' },
-    { img: 'assets/skye.png',     name: '天天' }
-  ];
-  var lastBuddy = -1;
   var buddyTimers = [];
 
-  /** 每次換一隻，感覺比較像有人在旁邊陪他 */
-  function nextBuddy() {
-    var i = Math.floor(Math.random() * BUDDIES.length);
-    if (i === lastBuddy) i = (i + 1) % BUDDIES.length;
-    lastBuddy = i;
-    return BUDDIES[i];
-  }
-
   /**
-   * 狗狗從右下角彈出來，搖一搖，說一句話再退場。
+   * 天天從右下角彈出來揮手、眨眼，說一句話再退場。
+   * 動畫是 18 格的精靈圖，用 CSS steps() 播放，不需要影片解碼。
    * pointer-events 是 none，不會擋到任何按鈕。
    */
   function showBuddy(text, big) {
     if (reduceMotion()) return;
 
     var box = $('#buddy');
-    var img = $('#buddy-img');
     var bubble = $('#buddy-bubble');
 
     buddyTimers.forEach(clearTimeout);
     buddyTimers = [];
 
-    var buddy = nextBuddy();
-    img.src = buddy.img;
     Zhuyin.fill(bubble, text);
 
     // 重設動畫，連續點擊時才會重新播一次而不是卡住
@@ -594,7 +579,6 @@
 
   function showCelebrate() {
     $('#celebrate-bonus').textContent = Store.state.settings.perfectBonus;
-    $('#celebrate-hero').src = nextBuddy().img;    // 每天換一隻主角
     $('#celebrate').hidden = false;
     confettiRain(70);
     play('perfect');

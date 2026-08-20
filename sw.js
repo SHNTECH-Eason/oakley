@@ -6,7 +6,7 @@
  *
  * 改版時記得把 CACHE 的版號 +1，舊快取才會被清掉。
  */
-var CACHE = 'oakley-routine-v15';
+var CACHE = 'oakley-routine-v16';
 
 var PRECACHE = [
   './',
@@ -19,7 +19,7 @@ var PRECACHE = [
   'js/sync.js',
   'js/firebase-config.js',
   'assets/skye.png',
-  'assets/marshall.png',
+  'assets/skye-cheer.webp',
   'icons/icon-192.png',
   'icons/icon-512.png'
 ];
