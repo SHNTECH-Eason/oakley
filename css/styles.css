@@ -998,7 +998,28 @@ button { font: inherit; color: inherit; cursor: pointer; }
   0% { transform: scale(.6) rotate(-6deg); opacity: 0; }
   100% { transform: scale(1) rotate(0); opacity: 1; }
 }
-.celebrate__hero { --cell: 132px; margin: 0 auto 2px; }
+/**
+ * 全部完成時天天展翼起飛 —— 一天只有一次，值得比揮手更大的動作。
+ *
+ * 起飛只播一次然後停在最後一格（飛行姿勢），再疊一個上下浮動讓她不像定格。
+ * 15 格的精靈圖要用 steps(14) 跑到 -14 格：steps 預設是 end，
+ * 動畫結束的瞬間會多跳一格，用 15 就會停在空白格上。
+ */
+.celebrate__hero {
+  --cell: 132px;
+  margin: 0 auto 2px;
+  background-image: url('../assets/skye-fly.webp');
+  animation: fly 1.25s steps(14) forwards,
+             hover 2.4s ease-in-out 1.25s infinite;
+}
+
+@keyframes fly {
+  to { background-position-x: calc(var(--cell) * -14); }
+}
+@keyframes hover {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-9px); }
+}
 .celebrate__title { font-size: 1.45rem; font-weight: 900; color: var(--brand-dark); margin-top: 2px; }
 .celebrate__sub { font-size: 1.05rem; color: var(--accent); margin-top: 4px; }
 .celebrate__bonus {
