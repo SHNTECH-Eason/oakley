@@ -821,6 +821,104 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .editor__weekday input:checked + span { color: #fff; }
 .editor__weekday label:has(input:checked) { background: var(--brand); color: #fff; }
 
+/* ── 汪汪隊夥伴 ───────────────────────────────────────────
+   完成時從畫面右下角彈出來，搖一下，說一句稱讚再退場。
+   pointer-events: none 讓它不會擋到任何按鈕。                */
+
+.buddy {
+  position: fixed;
+  right: 8px;
+  bottom: calc(var(--tabbar-h) + env(safe-area-inset-bottom) + 4px);
+  z-index: 78;
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  pointer-events: none;
+  animation: buddy-in .5s cubic-bezier(.25,1.4,.5,1) both;
+}
+.buddy[hidden] { display: none; }
+.buddy.is-leaving { animation: buddy-out .35s ease-in both; }
+
+.buddy__img {
+  width: 108px;
+  height: 108px;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 10px rgba(15,23,42,.3));
+  transform-origin: 50% 100%;
+  animation: buddy-wiggle .6s ease-in-out .25s 2;
+}
+.buddy--big .buddy__img { width: 148px; height: 148px; }
+
+.buddy__bubble {
+  position: relative;
+  max-width: 46vw;
+  background: #fff;
+  border: 3px solid var(--gold);
+  border-radius: 18px;
+  padding: 9px 14px;
+  margin-bottom: 26px;
+  font-size: .95rem;
+  font-weight: 900;
+  line-height: 1.75;
+  color: var(--ink);
+  box-shadow: var(--shadow-lg);
+  animation: bubble-pop .4s cubic-bezier(.3,1.5,.6,1) .12s both;
+}
+/* 泡泡指向狗狗的小尾巴 */
+.buddy__bubble::after {
+  content: '';
+  position: absolute;
+  right: -11px;
+  bottom: 12px;
+  width: 0; height: 0;
+  border-left: 12px solid var(--gold);
+  border-top: 8px solid transparent;
+  border-bottom: 8px solid transparent;
+}
+.buddy__bubble::before {
+  content: '';
+  position: absolute;
+  right: -6px;
+  bottom: 14px;
+  z-index: 1;
+  width: 0; height: 0;
+  border-left: 9px solid #fff;
+  border-top: 6px solid transparent;
+  border-bottom: 6px solid transparent;
+}
+
+@keyframes buddy-in {
+  0%   { transform: translateY(118%) scale(.85); opacity: 0; }
+  60%  { transform: translateY(-6%) scale(1.05); opacity: 1; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+@keyframes buddy-out {
+  from { transform: translateY(0); opacity: 1; }
+  to   { transform: translateY(118%); opacity: 0; }
+}
+@keyframes buddy-wiggle {
+  0%, 100% { transform: rotate(0); }
+  25%      { transform: rotate(-7deg); }
+  75%      { transform: rotate(7deg); }
+}
+@keyframes bubble-pop {
+  0%   { transform: scale(.5) translateY(8px); opacity: 0; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+/* 慶祝畫面裡的主角也跳一下 */
+.celebrate__hero { animation: hero-hop 1s ease-in-out .2s 2; }
+@keyframes hero-hop {
+  0%, 100% { transform: translateY(0) rotate(0); }
+  30%      { transform: translateY(-12px) rotate(-5deg); }
+  60%      { transform: translateY(0) rotate(5deg); }
+}
+
+@media (max-width: 380px) {
+  .buddy__img { width: 92px; height: 92px; }
+  .buddy__bubble { font-size: .88rem; max-width: 42vw; }
+}
+
 .version-badge {
   text-align: center;
   font-size: .65rem;

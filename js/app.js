@@ -285,6 +285,56 @@
     autoRemove(node, 1050);
   }
 
+  // ── 汪汪隊夥伴 ──────────────────────────────────────────
+
+  var BUDDIES = [
+    { img: 'assets/marshall.png', name: '毛毛' },
+    { img: 'assets/skye.png',     name: '天天' }
+  ];
+  var lastBuddy = -1;
+  var buddyTimers = [];
+
+  /** 每次換一隻，感覺比較像有人在旁邊陪他 */
+  function nextBuddy() {
+    var i = Math.floor(Math.random() * BUDDIES.length);
+    if (i === lastBuddy) i = (i + 1) % BUDDIES.length;
+    lastBuddy = i;
+    return BUDDIES[i];
+  }
+
+  /**
+   * 狗狗從右下角彈出來，搖一搖，說一句話再退場。
+   * pointer-events 是 none，不會擋到任何按鈕。
+   */
+  function showBuddy(text, big) {
+    if (reduceMotion()) return;
+
+    var box = $('#buddy');
+    var img = $('#buddy-img');
+    var bubble = $('#buddy-bubble');
+
+    buddyTimers.forEach(clearTimeout);
+    buddyTimers = [];
+
+    var buddy = nextBuddy();
+    img.src = buddy.img;
+    Zhuyin.fill(bubble, text);
+
+    // 重設動畫，連續點擊時才會重新播一次而不是卡住
+    box.hidden = true;
+    box.classList.remove('is-leaving');
+    box.classList.toggle('buddy--big', !!big);
+    void box.offsetWidth;
+    box.hidden = false;
+
+    var stay = big ? 2600 : 1800;
+    buddyTimers.push(setTimeout(function () { box.classList.add('is-leaving'); }, stay));
+    buddyTimers.push(setTimeout(function () {
+      box.hidden = true;
+      box.classList.remove('is-leaving');
+    }, stay + 380));
+  }
+
   /** 全部完成時的紙屑雨 */
   function confettiRain(count) {
     if (reduceMotion()) return;
@@ -495,14 +545,17 @@
       var done = name ? withName('全部完成！{n}今天好棒！', name) : '全部完成！今天好棒！';
       flashPraise(done);
       speak(done, 400);
+      // 全破的狗狗留給慶祝畫面演，這裡不搶戲
     } else if (oneLeft) {
       flashPraise('只剩最後一個囉！');
       setTimeout(function () { play('almost', 1); }, 520);
       speak('只剩最後一個囉！', 440);
+      showBuddy('只剩最後一個囉！');
     } else {
       var praise = pickPraise(rare);
       flashPraise(praise);
       speak(praise, 400);
+      showBuddy(praise, rare);
     }
 
     if (!wasPerfect && nowPerfect) setTimeout(showCelebrate, 380);
@@ -541,6 +594,7 @@
 
   function showCelebrate() {
     $('#celebrate-bonus').textContent = Store.state.settings.perfectBonus;
+    $('#celebrate-hero').src = nextBuddy().img;    // 每天換一隻主角
     $('#celebrate').hidden = false;
     confettiRain(70);
     play('perfect');
@@ -652,6 +706,7 @@
                       : (reason + '，加 ' + points + ' 個爪印！');
     toast('🎁 ' + reason + '　+' + points + ' 🐾');
     speak(praise, 300);
+    showBuddy(reason.length > 6 ? '好棒！' : reason + '，好棒！', true);
   }
 
   // ── 本週 ────────────────────────────────────────────────
