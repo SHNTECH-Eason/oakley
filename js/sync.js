@@ -28,7 +28,10 @@ const statusListeners = [];
 let db = null;
 let unsubscribes = [];
 let pushing = false;                // 首次上傳期間先不要被自己觸發
-let reconciled = false;             // 每次 attach 只跟伺服器對帳一次
+// 每次 attach 只跟伺服器對帳一次，三個集合各自計次
+let reconciled = false;
+let bonusReconciled = false;
+let quizReconciled = false;
 
 // 邀請連結可能在 Firebase 還沒連上時就被點開，join() 要能等它。
 // 成功或失敗都要 resolve，否則呼叫端會永遠卡住。
@@ -143,7 +146,7 @@ function detach() {
 
 function attach(familyId) {
   detach();
-  reconciled = false;
+  reconciled = bonusReconciled = quizReconciled = false;
 
   const profileRef = fb.doc(db, 'families', familyId, 'meta', 'profile');
   const recordsRef = fb.collection(db, 'families', familyId, 'records');
@@ -182,22 +185,51 @@ function attach(familyId) {
 
   // 特別獎勵：一筆一份文件，兩台同時給獎也不會互相蓋掉
   const bonusRef = fb.collection(db, 'families', familyId, 'bonuses');
-  unsubscribes.push(fb.onSnapshot(bonusRef, (snap) => {
+  unsubscribes.push(fb.onSnapshot(bonusRef, { includeMetadataChanges: true }, (snap) => {
     snap.docChanges().forEach((change) => {
       if (change.type === 'removed') Store.removeRemoteBonus(change.doc.id);
       else Store.applyRemoteBonus(change.doc.data());
     });
-    if (snap.empty && !pushing) pushAllBonuses(familyId);
+    if (!snap.metadata.fromCache && !bonusReconciled) {
+      bonusReconciled = true;
+      reconcileById(familyId, 'bonuses', snap, Store.state.bonuses, (b) => b.id);
+    }
   }, (e) => setStatus('error', describeError(e))));
 
   // 每日數學挑戰：一天一份文件，天然擋掉一天挑戰兩次
   const quizRef = fb.collection(db, 'families', familyId, 'quizzes');
-  unsubscribes.push(fb.onSnapshot(quizRef, (snap) => {
+  unsubscribes.push(fb.onSnapshot(quizRef, { includeMetadataChanges: true }, (snap) => {
     snap.docChanges().forEach((change) => {
       Store.applyRemoteQuiz(change.doc.id, change.type === 'removed' ? null : change.doc.data());
     });
-    if (snap.empty && !pushing) pushAllQuizzes(familyId);
+    if (!snap.metadata.fromCache && !quizReconciled) {
+      quizReconciled = true;
+      const list = Object.keys(Store.state.quizzes).map((k) => Store.state.quizzes[k]);
+      reconcileById(familyId, 'quizzes', snap, list, (q) => q.date);
+    }
   }, (e) => setStatus('error', describeError(e))));
+}
+
+/**
+ * 把本機有、雲端沒有的整份文件補上去（獎勵與闖關成績用）。
+ *
+ * 跟 reconcile() 同一個道理：不能只在雲端全空時才上傳。這台可能離線
+ * 好幾天累積了新的獎勵，而雲端已經有舊的，那樣就永遠傳不上去。
+ */
+function reconcileById(familyId, name, snap, localList, idOf) {
+  const remote = {};
+  snap.forEach((d) => { remote[d.id] = true; });
+
+  const writes = (localList || [])
+    .filter((item) => item && idOf(item) && !remote[idOf(item)])
+    .map((item) => fb.setDoc(fb.doc(db, 'families', familyId, name, idOf(item)), item));
+
+  if (!writes.length) return;
+
+  pushing = true;
+  Promise.all(writes)
+    .catch((e) => setStatus('error', describeError(e)))
+    .finally(() => { pushing = false; });
 }
 
 /**

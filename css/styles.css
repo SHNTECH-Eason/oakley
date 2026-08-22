@@ -463,30 +463,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
   line-height: 1.7;
 }
 
-/* ── 數學挑戰入口卡 ───────────────────────────────────────── */
-
-.challenge {
-  width: 100%;
-  margin-top: 12px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  text-align: left;
-  padding: 13px 14px;
-  border: 3px solid #c4b5fd;
-  border-radius: var(--radius);
-  background: linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%);
-  box-shadow: var(--shadow);
-  transition: transform .12s ease;
-}
-.challenge:active { transform: scale(.975); }
-.challenge.is-done { opacity: .78; }
-.challenge__icon { font-size: 1.9rem; line-height: 1; flex-shrink: 0; }
-.challenge__body { flex: 1; min-width: 0; }
-.challenge__title { font-size: 1rem; line-height: 1.7; }
-.challenge__sub { font-size: .76rem; font-weight: 500; color: var(--ink-soft); margin-top: 2px; }
-.challenge__go { font-size: 1.1rem; color: #7c3aed; flex-shrink: 0; }
-
 /* ── 數學挑戰畫面 ─────────────────────────────────────────── */
 
 .quiz {
@@ -647,8 +623,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .quiz__hero--big { width: 150px; height: 150px; }
 
 .quiz__big { font-size: 1.35rem; font-weight: 900; line-height: 1.8; }
-.quiz__meta { font-size: .82rem; font-weight: 700; color: var(--ink-soft); line-height: 1.8; }
-.quiz__streak { font-size: .82rem; font-weight: 900; color: #7c3aed; }
 .quiz__play { min-width: 190px; font-size: 1rem; padding: 14px 20px; }
 
 /* 題目 */
@@ -814,52 +788,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .stat__num { font-size: 1.7rem; font-weight: 900; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .stat__label { font-size: .72rem; color: var(--ink-soft); margin-top: 4px; }
 
-.calendar {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: 5px;
-  background: var(--card);
-  border-radius: var(--radius);
-  padding: 12px 10px;
-  box-shadow: var(--shadow);
-}
-.calendar__dow { text-align: center; font-size: .7rem; color: var(--ink-faint); padding-bottom: 2px; }
-.calendar__day {
-  aspect-ratio: 1;
-  border-radius: 9px;
-  display: grid;
-  place-items: center;
-  font-size: .74rem;
-  font-weight: 900;
-  background: #f1f5f9;
-  color: var(--ink-faint);
-}
-.calendar__day--empty { background: none; }
-.calendar__day[data-level="1"] { background: #fef3c7; color: #92400e; }
-.calendar__day[data-level="2"] { background: #fde68a; color: #92400e; }
-.calendar__day[data-level="3"] { background: #fbbf24; color: #fff; }
-.calendar__day[data-level="4"] { background: #22c55e; color: #fff; }
-.calendar__day.is-today { box-shadow: 0 0 0 2.5px var(--brand); }
-
-.legend {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  margin-top: 10px;
-  font-size: .7rem;
-  font-weight: 500;
-  color: var(--ink-faint);
-}
-.legend__box { width: 15px; height: 15px; border-radius: 4px; background: #f1f5f9; }
-.legend__box[data-level="1"] { background: #fef3c7; }
-.legend__box[data-level="2"] { background: #fde68a; }
-.legend__box[data-level="3"] { background: #fbbf24; }
-.legend__box[data-level="4"] { background: #22c55e; }
-
 /* ── 家長模式 ─────────────────────────────────────────────── */
-
-
 
 .version {
   font-family: ui-monospace, 'Cascadia Mono', Menlo, monospace;
@@ -903,7 +832,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
   font-size: .9rem;
 }
 .field--num { width: 76px; text-align: center; }
-.field--sel { width: auto; max-width: 62%; }
 .switch { width: 46px; height: 26px; accent-color: var(--brand); }
 .field-row {
   display: flex;
@@ -929,7 +857,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .btn--primary { background: var(--brand); color: #fff; }
 .btn--ghost { background: #f1f5f9; color: var(--ink); border: 2px solid var(--line); }
 .btn--danger { background: var(--danger); color: #fff; }
-.btn--block { width: 100%; margin-top: 4px; }
 
 /* 同步狀態 */
 .sync-dot {

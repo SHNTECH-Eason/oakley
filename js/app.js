@@ -723,10 +723,12 @@
     for (var s = 1; s <= Quiz.STAGES; s++) {
       if ((s - 1) % Quiz.PER_TIER === 0) {
         var tier = Quiz.tierInfo(s);
+        // 顏色靠 data-color 的屬性選擇器帶 --c 進來就好。
+        // 之前這裡多寫了一行 style.setProperty('--c', 'var(--c)')，
+        // 那是循環參照會讓變數失效，橫幅顏色一直是回退值。
         var banner = el('div', 'map__tier' + (s > current ? ' map__tier--locked' : ''),
           '第 ' + tier.from + '–' + tier.to + ' 關　' + tier.name);
         banner.setAttribute('data-color', tier.color);
-        banner.style.setProperty('--c', 'var(--c)');
         map.appendChild(banner);
       } else {
         var trail = el('div', 'map__trail');
@@ -867,7 +869,11 @@
     }
     renderQuizDots(-1);
 
+    // 回饋要停 1~2 秒，這期間使用者可能按離開或重開一關。
+    // 認住當下這一局，換局了就什麼都不做，否則會對 null 取值。
+    var session = quizState;
     setTimeout(function () {
+      if (quizState !== session) return;
       quizState.i++;
       if (quizState.i >= Quiz.TOTAL) finishQuiz();
       else showQuestion();
@@ -888,9 +894,8 @@
       ? '重玩不計獎勵'
       : (outcome.gained ? '+' + outcome.gained + ' 🐾' : '這次沒有爪印，但有來就很棒');
 
-    // 沒過關就把「再試一次」放出來，全對才需要回地圖看下一關
+    // 沒過關就把「再試一次」放出來，直接重來不用回地圖再點一次
     $('#quiz-retry').hidden = passed;
-    $('#quiz-again').textContent = passed ? '回地圖' : '回地圖';
 
     var up = $('#quiz-levelup');
     if (outcome && outcome.allDone) {
