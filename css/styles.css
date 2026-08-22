@@ -34,6 +34,7 @@
 [data-color="teal"]    { --c: #0d9488; --c-soft: #f0fdfa; --c-line: #5eead4; }
 [data-color="indigo"]  { --c: #4f46e5; --c-soft: #eef2ff; --c-line: #a5b4fc; }
 [data-color="night"]   { --c: #3730a3; --c-soft: #e0e7ff; --c-line: #818cf8; }
+[data-color="rose"]    { --c: #e11d48; --c-soft: #fff1f2; --c-line: #fda4af; }
 
 * { box-sizing: border-box; }
 

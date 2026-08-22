@@ -21,6 +21,7 @@
     { id: 'morning', from: '07:40', to: '08:00', label: '換衣服/吃早餐',      color: 'orange',  icon: 'marshall', days: EVERY_DAY },
     { id: 'school',  from: '08:00', to: '',      label: '出門上學',            color: 'blue',    icon: 'house',    days: WEEKDAYS },
     { id: 'dinner',  from: '18:30', to: '19:30', label: '晚餐時間',            color: 'emerald', icon: 'meal',     days: EVERY_DAY },
+    { id: 'homework', from: '19:30', to: '20:00', label: '完成功課',           color: 'rose',    icon: 'book',     days: [2] },
     { id: 'play',    from: '19:30', to: '20:30', label: '遊戲/閱讀時間',      color: 'purple',  icon: 'skye',     days: EVERY_DAY },
     { id: 'bath',    from: '20:30', to: '21:00', label: '收拾/洗澡時間',      color: 'teal',    icon: 'bath',     days: EVERY_DAY },
     { id: 'bag',     from: '21:00', to: '21:30', label: '整理書包/刷牙',      color: 'indigo',  icon: 'rubble',   days: EVERY_DAY },
@@ -29,7 +30,7 @@
 
   function defaults() {
     return {
-      version: 1,
+      version: 2,
       // 真實姓名故意不寫在程式碼裡（這是公開 repo）。
       // 畫面上顯示的一直都是暱稱，要填全名的話存在雲端那份設定就好。
       child: { name: '', nickname: 'Oaklay' },
@@ -115,7 +116,12 @@
     }
     if (raw) {
       try {
-        state = migrate(JSON.parse(raw));
+        var parsed = JSON.parse(raw);
+        var was = Number(parsed.version) || 1;
+        state = migrate(parsed);
+        // 轉換結果要立刻落地。否則版本號還停在舊的，
+        // 家長刪掉轉換加進來的項目之後，下次開又會被補回來。
+        if (was < SCHEMA) persist();
       } catch (e) {
         console.warn('資料毀損，改用預設值：', e);
         state = defaults();
@@ -124,11 +130,13 @@
     return state;
   }
 
+  var SCHEMA = 2;
+
   /** 舊版資料補上新欄位，避免改版後畫面炸掉 */
   function migrate(data) {
     var base = defaults();
     data = data || {};
-    data.version = 1;
+    var from = Number(data.version) || 1;
     data.child = Object.assign(base.child, data.child || {});
 
     // 判斷要不要轉換舊資料，一定要在套用預設值「之前」看原始內容 ——
@@ -161,7 +169,18 @@
         if (!Array.isArray(t.days) || !t.days.length) t.days = EVERY_DAY;
         return t;
       });
+
+      // v2：把「完成功課」（只在星期二）補進既有的作息表。
+      // 用 schema 版本當閘門而不是「找不到就補」—— 否則家長刪掉之後
+      // 每次重開都會又長回來。
+      if (from < 2 && !data.tasks.some(function (t) { return t.id === 'homework'; })) {
+        var hw = base.tasks.filter(function (t) { return t.id === 'homework'; })[0];
+        var after = data.tasks.map(function (t) { return t.id; }).indexOf('dinner');
+        data.tasks.splice(after >= 0 ? after + 1 : data.tasks.length, 0, Object.assign({}, hw));
+      }
     }
+
+    data.version = SCHEMA;
     return data;
   }
 

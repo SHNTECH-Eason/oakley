@@ -12,8 +12,8 @@
   'use strict';
 
   var DOW = ['日', '一', '二', '三', '四', '五', '六'];
-  var COLORS = ['amber', 'orange', 'blue', 'emerald', 'purple', 'teal', 'indigo', 'night'];
-  var ICONS = ['chase', 'marshall', 'skye', 'rubble', 'house', 'meal', 'bath', 'moon'];
+  var COLORS = ['amber', 'orange', 'blue', 'emerald', 'purple', 'teal', 'indigo', 'night', 'rose'];
+  var ICONS = ['chase', 'marshall', 'skye', 'rubble', 'house', 'meal', 'bath', 'moon', 'book'];
 
   var $ = function (sel, root) { return (root || document).querySelector(sel); };
   var $$ = function (sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); };
