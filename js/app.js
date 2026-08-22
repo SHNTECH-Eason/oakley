@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 介面邏輯
  *
  * 四個分頁：今天（打卡）、本週（格子表）、紀錄（統計＋月曆）、家長（PIN 保護）。
@@ -386,6 +386,7 @@
       });
       renderProgress();
       markNextTask();
+      renderChallengeCard();
       return;
     }
 
@@ -423,6 +424,7 @@
 
     renderProgress();
     markNextTask();
+    renderChallengeCard();
   }
 
   function renderProgress() {
@@ -693,6 +695,171 @@
     showBuddy(reason.length > 6 ? '好棒！' : reason + '，好棒！', true);
   }
 
+  // ── 數學挑戰 ────────────────────────────────────────────
+
+  var quizState = null;      // { set, i, correct, practice, level }
+
+  function renderChallengeCard() {
+    var today = Store.quizToday();
+    var lv = Quiz.levelInfo(Store.state.settings.quizLevel || 1);
+    var card = $('#challenge-card');
+    card.classList.toggle('is-done', !!today);
+    $('#challenge-sub').textContent = today
+      ? ('今天答對 ' + today.correct + '/' + today.total + '　可以再練習')
+      : ('第 ' + lv.n + ' 關・' + lv.name + '　十題');
+  }
+
+  function openQuiz() {
+    var lv = Quiz.levelInfo(Store.state.settings.quizLevel || 1);
+    var today = Store.quizToday();
+    var streak = Store.state.settings.quizStreak || 0;
+
+    $('#quiz-level').textContent = '第 ' + lv.n + ' 關';
+    $('#quiz-start-meta').textContent = lv.name + '（例：' + lv.desc + '）　共 ' + Quiz.TOTAL + ' 題';
+    $('#quiz-streak').textContent = today
+      ? '今天已經挑戰過了，答對 ' + today.correct + '/' + today.total
+      : '連續全對 ' + streak + ' / ' + Store.LEVEL_UP_STREAK + '　全對五次就升關';
+    $('#quiz-play').textContent = today ? '再玩一次（沒有獎勵）' : '開始挑戰';
+
+    showQuizPanel('start');
+    renderQuizDots(-1);
+    $('#quiz').hidden = false;
+  }
+
+  function closeQuiz() {
+    $('#quiz').hidden = true;
+    quizState = null;
+    renderChallengeCard();
+    renderTop();
+  }
+
+  function showQuizPanel(which) {
+    $('#quiz-start').hidden = which !== 'start';
+    $('#quiz-play-panel').hidden = which !== 'play';
+    $('#quiz-done').hidden = which !== 'done';
+  }
+
+  // 名字不能叫 renderDots：家長 PIN 鍵盤已經有一個同名函式，
+  // 而它在檔案裡的位置比較後面，會把這個蓋掉。
+  function renderQuizDots(current) {
+    var box = $('#quiz-dots');
+    box.textContent = '';
+    for (var i = 0; i < Quiz.TOTAL; i++) {
+      var d = el('i');
+      if (quizState && quizState.marks && quizState.marks[i] === true) d.className = 'is-right';
+      else if (quizState && quizState.marks && quizState.marks[i] === false) d.className = 'is-wrong';
+      else if (i === current) d.className = 'is-now';
+      box.appendChild(d);
+    }
+  }
+
+  function startQuiz(practice) {
+    var level = Store.state.settings.quizLevel || 1;
+    quizState = {
+      set: Quiz.makeSet(level),
+      i: 0, correct: 0, level: level,
+      practice: practice || !!Store.quizToday(),   // 今天挑戰過了就只能練習
+      marks: []
+    };
+    showQuizPanel('play');
+    showQuestion();
+  }
+
+  function showQuestion() {
+    var q = quizState.set[quizState.i];
+    $('#quiz-question').textContent = q.a + ' ' + q.op + ' ' + q.b + ' = ?';
+    $('#quiz-mark').textContent = '';
+    $('#quiz-mark').className = 'quiz__mark';
+    renderQuizDots(quizState.i);
+
+    // 第一關給爪印圖示當數數的鷹架，五歲還沒辦法純抽象心算
+    var aid = $('#quiz-aid');
+    aid.textContent = '';
+    if (quizState.level === 1) {
+      [q.a, q.b].forEach(function (n, idx) {
+        if (idx) aid.appendChild(el('span', null, q.op));
+        var g = el('span', 'quiz__aid-group');
+        for (var k = 0; k < n; k++) g.appendChild(svgIcon('paw'));
+        aid.appendChild(g);
+      });
+    }
+
+    var box = $('#quiz-options');
+    box.textContent = '';
+    q.options.forEach(function (opt) {
+      var b = el('button', 'quiz__opt', String(opt));
+      b.addEventListener('click', function () { answer(opt, b); });
+      box.appendChild(b);
+    });
+  }
+
+  function answer(choice, btn) {
+    var q = quizState.set[quizState.i];
+    var right = choice === q.answer;
+
+    $$('#quiz-options .quiz__opt').forEach(function (b) { b.disabled = true; });
+    btn.classList.add(right ? 'is-right' : 'is-wrong');
+
+    var mark = $('#quiz-mark');
+    if (right) {
+      quizState.correct++;
+      quizState.marks[quizState.i] = true;
+      mark.textContent = '答對了！';
+      mark.className = 'quiz__mark is-right';
+      play('done', quizState.correct / Quiz.TOTAL);
+      buzz(15);
+    } else {
+      quizState.marks[quizState.i] = false;
+      // 不用紅叉叉，直接把正確答案講出來，語氣保持往前
+      mark.textContent = '答案是 ' + q.answer + '，下次一定可以！';
+      mark.className = 'quiz__mark is-wrong';
+      $$('#quiz-options .quiz__opt').forEach(function (b) {
+        if (b.textContent === String(q.answer)) b.classList.add('is-right');
+      });
+      play('undo');
+    }
+    renderQuizDots(-1);
+
+    setTimeout(function () {
+      quizState.i++;
+      if (quizState.i >= Quiz.TOTAL) finishQuiz();
+      else showQuestion();
+    }, right ? 850 : 1900);
+  }
+
+  function finishQuiz() {
+    var correct = quizState.correct;
+    var perfect = correct >= Quiz.TOTAL;
+    var practice = quizState.practice;
+    var points = practice ? 0 : Quiz.score(correct);
+    var outcome = null;
+
+    if (!practice) outcome = Store.addQuizResult(quizState.level, correct, Quiz.TOTAL, points);
+
+    $('#quiz-done-title').textContent = '';
+    Zhuyin.fill($('#quiz-done-title'), perfect ? '全部答對' : (correct >= 6 ? '很棒喔' : '有挑戰就很棒'));
+    $('#quiz-score').textContent = correct + ' / ' + Quiz.TOTAL;
+    $('#quiz-reward').textContent = practice ? '練習模式，不計獎勵' : '+' + points + ' 🐾';
+
+    var up = $('#quiz-levelup');
+    if (outcome && outcome.levelledUp) {
+      up.textContent = '🎉 升到第 ' + outcome.level + ' 關：' + Quiz.levelInfo(outcome.level).name;
+      up.hidden = false;
+    } else if (!practice && perfect) {
+      up.textContent = '連續全對 ' + outcome.streak + ' / ' + Store.LEVEL_UP_STREAK;
+      up.hidden = false;
+    } else {
+      up.hidden = true;
+    }
+
+    showQuizPanel('done');
+    renderQuizDots(-1);
+    renderTop();
+
+    if (perfect && !practice) { confettiRain(50); play('perfect'); buzz([30,60,30,60,120]); }
+    else if (!practice) { play('done', 1); }
+  }
+
   // ── 本週 ────────────────────────────────────────────────
 
   function renderWeek() {
@@ -923,6 +1090,17 @@
     $('#cfg-nick').value = s.child.nickname || '';
     $('#cfg-sound').checked = s.settings.sound !== false;
     $('#cfg-speech').checked = !!s.settings.speech;
+
+    var sel = $('#cfg-level');
+    if (!sel.options.length) {
+      Quiz.LEVELS.forEach(function (lv) {
+        sel.appendChild(new Option('第 ' + lv.n + ' 關　' + lv.name, lv.n));
+      });
+    }
+    sel.value = String(s.settings.quizLevel || 1);
+    $('#cfg-level-hint').textContent =
+      '連續全對 ' + Store.LEVEL_UP_STREAK + ' 次會自動升關（目前 ' +
+      (s.settings.quizStreak || 0) + ' 次）。手動改難度會把連勝歸零。';
     if (!$('#backfill-date').value) $('#backfill-date').value = Store.dateKey(Store.today());
 
     var hasPin = !!s.settings.pin;
@@ -1309,6 +1487,11 @@
     });
 
     $('#cfg-save').addEventListener('click', function () {
+      var lv = Number($('#cfg-level').value) || 1;
+      // 手動改難度就把連勝歸零，不然換關之後那個數字沒有意義
+      if (lv !== Store.state.settings.quizLevel) {
+        Store.updateSettings({ quizLevel: lv, quizStreak: 0 });
+      }
       Store.updateSettings({
         pointsPerTask: Math.max(1, Number($('#cfg-per').value) || 1),
         perfectBonus: Math.max(0, Number($('#cfg-bonus').value) || 0),
@@ -1317,6 +1500,7 @@
       });
       Store.updateChild({ nickname: $('#cfg-nick').value.trim() || 'Oaklay' });
       renderAll();
+      renderParent();
       toast('設定已儲存');
     });
 
@@ -1376,6 +1560,12 @@
     $('#update-apply').addEventListener('click', applyUpdate);
     $('#update-check').addEventListener('click', checkForUpdate);
     $('#update-force').addEventListener('click', forceReload);
+
+    $('#challenge-card').addEventListener('click', openQuiz);
+    $('#quiz-close').addEventListener('click', closeQuiz);
+    $('#quiz-play').addEventListener('click', function () { startQuiz(false); });
+    $('#quiz-practice').addEventListener('click', function () { startQuiz(true); });
+    $('#quiz-again').addEventListener('click', closeQuiz);
 
     $('#give-ok').addEventListener('click', confirmGive);
     $('#give-cancel').addEventListener('click', function () {

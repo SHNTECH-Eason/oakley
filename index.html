@@ -124,7 +124,53 @@
   </div>
 
   <ul class="tasks" id="task-list"></ul>
+
+  <button class="challenge" id="challenge-card">
+    <div class="challenge__icon">🎮</div>
+    <div class="challenge__body">
+      <div class="challenge__title" data-zy="數學挑戰"></div>
+      <div class="challenge__sub" id="challenge-sub"></div>
+    </div>
+    <div class="challenge__go">▶</div>
+  </button>
 </section>
+
+<!-- ════ 數學挑戰（全螢幕） ════ -->
+<div class="quiz" id="quiz" hidden>
+  <div class="quiz__bar">
+    <button class="quiz__close" id="quiz-close" aria-label="離開">✕</button>
+    <div class="quiz__dots" id="quiz-dots"></div>
+    <div class="quiz__level" id="quiz-level"></div>
+  </div>
+
+  <!-- 開始畫面 -->
+  <div class="quiz__panel" id="quiz-start">
+    <div class="quiz__hero"></div>
+    <div class="quiz__big" data-zy="數學挑戰"></div>
+    <div class="quiz__meta" id="quiz-start-meta"></div>
+    <div class="quiz__streak" id="quiz-streak"></div>
+    <button class="btn btn--primary quiz__play" id="quiz-play">開始挑戰</button>
+    <button class="btn btn--ghost" id="quiz-practice">練習模式（沒有獎勵）</button>
+  </div>
+
+  <!-- 答題畫面 -->
+  <div class="quiz__panel" id="quiz-play-panel" hidden>
+    <div class="quiz__q" id="quiz-question"></div>
+    <div class="quiz__aid" id="quiz-aid"></div>
+    <div class="quiz__options" id="quiz-options"></div>
+    <div class="quiz__mark" id="quiz-mark"></div>
+  </div>
+
+  <!-- 結算畫面 -->
+  <div class="quiz__panel" id="quiz-done" hidden>
+    <div class="quiz__hero quiz__hero--big"></div>
+    <div class="quiz__big" id="quiz-done-title"></div>
+    <div class="quiz__score" id="quiz-score"></div>
+    <div class="quiz__reward" id="quiz-reward"></div>
+    <div class="quiz__levelup" id="quiz-levelup" hidden></div>
+    <button class="btn btn--primary quiz__play" id="quiz-again">好！</button>
+  </div>
+</div>
 
 <!-- ════ 特別獎勵 ════ -->
 <section class="view" id="view-reward">
@@ -223,6 +269,8 @@
         <label class="field-row">每完成一項<input type="number" id="cfg-per" class="field field--num" min="1" max="99"></label>
         <label class="field-row">當天全部完成加碼<input type="number" id="cfg-bonus" class="field field--num" min="0" max="99"></label>
         <label class="field-row">小朋友暱稱<input type="text" id="cfg-nick" class="field" maxlength="12"></label>
+        <label class="field-row">數學挑戰難度<select id="cfg-level" class="field field--sel"></select></label>
+        <p class="card__desc" id="cfg-level-hint"></p>
         <label class="field-row">打卡音效<input type="checkbox" id="cfg-sound" class="switch"></label>
         <label class="field-row">語音朗讀<input type="checkbox" id="cfg-speech" class="switch"></label>
         <p class="card__desc">完成時念一句稱讚，例如「好棒喔！」。還不太識字的小朋友聽得懂，但合成語音有機械感，睡前那一項也會出聲，所以預設關閉。</p>
@@ -373,6 +421,7 @@
 
 <script src="js/zhuyin.js"></script>
 <script src="js/store.js"></script>
+<script src="js/quiz.js"></script>
 <script src="js/app.js"></script>
 <!-- 同步是選配：這支載不起來（離線／擋 gstatic）App 一樣能正常打卡 -->
 <script type="module" src="js/sync.js"></script>

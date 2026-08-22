@@ -37,6 +37,8 @@
         pin: null,           // 家長 PIN。故意不上傳，每台裝置各自設定
         pointsPerTask: 1,    // 每完成一項的爪印數
         perfectBonus: 5,     // 當日全部完成的額外爪印
+        quizLevel: 1,        // 數學挑戰的難度，連續全對五次自動升一級
+        quizStreak: 0,       // 目前等級已經連續全對幾次
         sound: true,         // 打卡音效（睡前那一項會響，可以關掉）
         speech: false        // 念出項目名稱與稱讚。五歲還不識字，聽比看有用，
                              // 但合成語音有機械感，所以預設關閉讓家長自己決定
@@ -44,6 +46,7 @@
       tasks: DEFAULT_TASKS.map(function (t) { return Object.assign({}, t); }),
       records: {},           // { 'YYYY-MM-DD': { taskId: ISO 時間字串 } }
       bonuses: [],           // 作息表之外的特別獎勵 [{ id, date, reason, points, at }]
+      quizzes: {},           // 每日數學挑戰 { 'YYYY-MM-DD': { level, correct, total, points, at } }
       redeemed: [],          // 預留給之後的點數兌換
       updatedAt: null
     };
@@ -132,6 +135,7 @@
     data.settings = Object.assign(base.settings, data.settings || {});
     data.records = data.records || {};
     data.bonuses = Array.isArray(data.bonuses) ? data.bonuses : [];
+    data.quizzes = (data.quizzes && typeof data.quizzes === 'object') ? data.quizzes : {};
     data.redeemed = data.redeemed || [];
     if (!Array.isArray(data.tasks) || !data.tasks.length) {
       data.tasks = base.tasks;
@@ -219,13 +223,22 @@
     });
 
     var bonus = bonusPoints();
+    var quiz = quizPoints();
     var used = state.redeemed.reduce(function (a, r) { return a + (r.cost || 0); }, 0);
-    return { earned: sum + bonus, routine: sum, bonus: bonus, used: used, balance: sum + bonus - used };
+    var earned = sum + bonus + quiz;
+    return { earned: earned, routine: sum, bonus: bonus, quiz: quiz, used: used, balance: earned - used };
   }
 
   /** 作息表之外的特別獎勵總點數 */
   function bonusPoints() {
     return state.bonuses.reduce(function (a, b) { return a + (Number(b.points) || 0); }, 0);
+  }
+
+  /** 數學挑戰累積的點數 */
+  function quizPoints() {
+    return Object.keys(state.quizzes).reduce(function (a, k) {
+      return a + (Number(state.quizzes[k].points) || 0);
+    }, 0);
   }
 
   /**
@@ -309,6 +322,64 @@
     return state.bonuses.slice().sort(function (a, b) {
       return (b.at || '').localeCompare(a.at || '');
     }).slice(0, limit || 20);
+  }
+
+  // ── 每日數學挑戰 ────────────────────────────────────────────
+
+  var MAX_QUIZ_LEVEL = 5;
+  var LEVEL_UP_STREAK = 5;      // 同一等級連續全對幾次就升級
+
+  function quizToday() {
+    return state.quizzes[dateKey(today())] || null;
+  }
+
+  /**
+   * 記下今天的成績並處理升級。
+   *
+   * 升級條件刻意用「連續」全對而不是累計 —— 要證明是真的會了，
+   * 不是矇對幾次。任何一次沒全對就從頭算起。
+   */
+  function addQuizResult(level, correct, total, points) {
+    var key = dateKey(today());
+    var perfect = correct >= total;
+    var s = state.settings;
+    var levelledUp = false;
+
+    if (perfect) {
+      s.quizStreak = (s.quizStreak || 0) + 1;
+      if (s.quizStreak >= LEVEL_UP_STREAK && s.quizLevel < MAX_QUIZ_LEVEL) {
+        s.quizLevel++;
+        s.quizStreak = 0;
+        levelledUp = true;
+      }
+    } else {
+      s.quizStreak = 0;
+    }
+
+    var result = {
+      date: key, level: level, correct: correct, total: total,
+      points: points, at: new Date().toISOString()
+    };
+    state.quizzes[key] = result;
+
+    persist();
+    notify({ origin: 'local', kind: 'quiz', dateKey: key, result: result });
+    notify({ origin: 'local', kind: 'profile' });     // 等級與連勝存在 settings 裡
+    return { result: result, levelledUp: levelledUp, level: s.quizLevel, streak: s.quizStreak };
+  }
+
+  function applyRemoteQuiz(key, data) {
+    if (data) state.quizzes[key] = data;
+    else delete state.quizzes[key];
+    persist();
+    notify({ origin: 'remote', kind: 'quiz' });
+  }
+
+  function mergeRemoteQuizzes(map, replace) {
+    if (replace) state.quizzes = {};
+    Object.keys(map || {}).forEach(function (k) { state.quizzes[k] = map[k]; });
+    persist();
+    notify({ origin: 'remote', kind: 'all' });
   }
 
   function updateSettings(patch) {
@@ -481,7 +552,14 @@
     dayStats: dayStats,
     totalPoints: totalPoints,
     bonusPoints: bonusPoints,
+    quizPoints: quizPoints,
     recentBonuses: recentBonuses,
+    MAX_QUIZ_LEVEL: MAX_QUIZ_LEVEL,
+    LEVEL_UP_STREAK: LEVEL_UP_STREAK,
+    quizToday: quizToday,
+    addQuizResult: addQuizResult,
+    applyRemoteQuiz: applyRemoteQuiz,
+    mergeRemoteQuizzes: mergeRemoteQuizzes,
     streak: streak,
     activeDays: activeDays,
 

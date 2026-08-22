@@ -6,7 +6,7 @@
  *
  * 改版時記得把 CACHE 的版號 +1，舊快取才會被清掉。
  */
-var CACHE = 'oakley-routine-v17';
+var CACHE = 'oakley-routine-v18';
 
 var PRECACHE = [
   './',
@@ -15,6 +15,7 @@ var PRECACHE = [
   'css/styles.css',
   'js/zhuyin.js',
   'js/store.js',
+  'js/quiz.js',
   'js/app.js',
   'js/sync.js',
   'js/firebase-config.js',

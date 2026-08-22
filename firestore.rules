@@ -35,6 +35,11 @@ service cloud.firestore {
       match /bonuses/{bonusId} {
         allow read, write: if allowed(familyId);
       }
+
+      // 每日數學挑戰的成績
+      match /quizzes/{dateKey} {
+        allow read, write: if allowed(familyId);
+      }
     }
 
     // 其餘一律拒絕

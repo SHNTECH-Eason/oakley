@@ -189,6 +189,15 @@ function attach(familyId) {
     });
     if (snap.empty && !pushing) pushAllBonuses(familyId);
   }, (e) => setStatus('error', describeError(e))));
+
+  // 每日數學挑戰：一天一份文件，天然擋掉一天挑戰兩次
+  const quizRef = fb.collection(db, 'families', familyId, 'quizzes');
+  unsubscribes.push(fb.onSnapshot(quizRef, (snap) => {
+    snap.docChanges().forEach((change) => {
+      Store.applyRemoteQuiz(change.doc.id, change.type === 'removed' ? null : change.doc.data());
+    });
+    if (snap.empty && !pushing) pushAllQuizzes(familyId);
+  }, (e) => setStatus('error', describeError(e))));
 }
 
 /**
@@ -278,6 +287,24 @@ function pushAllBonuses(familyId) {
     .finally(() => { pushing = false; });
 }
 
+function pushQuiz(familyId, key, result) {
+  if (!db || !result) return;
+  fb.setDoc(fb.doc(db, 'families', familyId, 'quizzes', key), result)
+    .catch((e) => setStatus('error', describeError(e)));
+}
+
+function pushAllQuizzes(familyId) {
+  if (!db) return;
+  const map = Store.state.quizzes || {};
+  const keys = Object.keys(map);
+  if (!keys.length) return;
+
+  pushing = true;
+  Promise.all(keys.map((k) => fb.setDoc(fb.doc(db, 'families', familyId, 'quizzes', k), map[k])))
+    .catch((e) => setStatus('error', describeError(e)))
+    .finally(() => { pushing = false; });
+}
+
 function pushAllRecords(familyId) {
   if (!db) return;
   const records = Store.state.records;
@@ -303,6 +330,8 @@ Store.subscribe((state, meta) => {
     } else {
       deleteRemoteDay(familyId, meta.dateKey);
     }
+  } else if (meta.kind === 'quiz') {
+    pushQuiz(familyId, meta.dateKey, meta.result);
   } else if (meta.kind === 'bonus') {
     pushBonus(familyId, meta.bonus);
   } else if (meta.kind === 'bonus-remove') {
@@ -316,6 +345,7 @@ Store.subscribe((state, meta) => {
       pushProfile(familyId);
       pushAllRecords(familyId);
       pushAllBonuses(familyId);
+      pushAllQuizzes(familyId);
     }
   }
 });
@@ -325,7 +355,7 @@ async function wipeRemote(familyId) {
   if (!db) return;
   pushing = true;
   try {
-    for (const name of ['records', 'bonuses']) {
+    for (const name of ['records', 'bonuses', 'quizzes']) {
       const snap = await fb.getDocs(fb.collection(db, 'families', familyId, name));
       await Promise.all(snap.docs.map((d) => fb.deleteDoc(d.ref)));
     }
@@ -359,11 +389,14 @@ async function join(rawCode, opts) {
   const profileSnap = await fb.getDoc(fb.doc(db, 'families', code, 'meta', 'profile'));
   const recordsSnap = await fb.getDocs(fb.collection(db, 'families', code, 'records'));
   const bonusSnap = await fb.getDocs(fb.collection(db, 'families', code, 'bonuses'));
+  const quizSnap = await fb.getDocs(fb.collection(db, 'families', code, 'quizzes'));
 
   const remote = {};
   recordsSnap.forEach((d) => { remote[d.id] = d.data(); });
   const bonuses = [];
   bonusSnap.forEach((d) => { bonuses.push(d.data()); });
+  const quizzes = {};
+  quizSnap.forEach((d) => { quizzes[d.id] = d.data(); });
 
   rememberPrevious(code);
   localStorage.setItem(FAMILY_KEY, code);
@@ -374,11 +407,13 @@ async function join(rawCode, opts) {
     Store.replaceRecords(remote);
   }
   Store.mergeRemoteBonuses(bonuses, !mergeLocal);
+  Store.mergeRemoteQuizzes(quizzes, !mergeLocal);
   if (profileSnap.exists()) Store.applyRemoteProfile(profileSnap.data());
 
   if (mergeLocal) {
     pushAllRecords(code);
     pushAllBonuses(code);
+    pushAllQuizzes(code);
   }
   attach(code);
   return code;
@@ -399,6 +434,7 @@ function unpair() {
     pushProfile(id);
     pushAllRecords(id);
     pushAllBonuses(id);
+    pushAllQuizzes(id);
     attach(id);
   }
   return id;
