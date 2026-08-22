@@ -125,14 +125,6 @@
 
   <ul class="tasks" id="task-list"></ul>
 
-  <button class="challenge" id="challenge-card">
-    <div class="challenge__icon">🎮</div>
-    <div class="challenge__body">
-      <div class="challenge__title" data-zy="數學挑戰"></div>
-      <div class="challenge__sub" id="challenge-sub"></div>
-    </div>
-    <div class="challenge__go">▶</div>
-  </button>
 </section>
 
 <!-- ════ 數學挑戰（全螢幕） ════ -->
@@ -143,17 +135,8 @@
     <div class="quiz__level" id="quiz-level"></div>
   </div>
 
-  <!-- 闖關地圖 -->
-  <div class="quiz__panel quiz__panel--map" id="quiz-start">
-    <div class="quiz__maptop">
-      <div class="quiz__big" data-zy="數學闖關"></div>
-      <div class="quiz__meta" id="quiz-start-meta"></div>
-    </div>
-    <div class="map" id="quiz-map"></div>
-  </div>
-
   <!-- 答題畫面 -->
-  <div class="quiz__panel" id="quiz-play-panel" hidden>
+  <div class="quiz__panel" id="quiz-play-panel">
     <div class="quiz__q" id="quiz-question"></div>
     <div class="quiz__aid" id="quiz-aid"></div>
     <div class="quiz__options" id="quiz-options"></div>
@@ -196,11 +179,8 @@
   </div>
   <div class="week-scroll"><table class="week" id="week-grid"></table></div>
   <div class="week-note" id="week-note"></div>
-</section>
 
-<!-- ════ 紀錄 ════ -->
-<section class="view" id="view-stats">
-  <div class="stats">
+  <div class="stats stats--week">
     <div class="stat stat--paw">
       <div class="stat__num" id="stat-paw">0</div>
       <div class="stat__label" data-zy="總爪印"></div>
@@ -214,22 +194,26 @@
       <div class="stat__label" data-zy="打卡天數"></div>
     </div>
   </div>
+</section>
 
-  <div class="pager">
-    <button class="pager__btn" id="cal-prev" aria-label="上個月">‹</button>
-    <div class="pager__label" id="cal-label"></div>
-    <button class="pager__btn" id="cal-next" aria-label="下個月">›</button>
+<!-- ════ 挑戰 ════ -->
+<section class="view" id="view-quest">
+  <div class="stats">
+    <div class="stat stat--paw">
+      <div class="stat__num" id="stat-stage">1</div>
+      <div class="stat__label" data-zy="目前關卡"></div>
+    </div>
+    <div class="stat stat--fire">
+      <div class="stat__num" id="stat-today">0/3</div>
+      <div class="stat__label" data-zy="今天前進"></div>
+    </div>
+    <div class="stat stat--day">
+      <div class="stat__num" id="stat-qpaw">0</div>
+      <div class="stat__label" data-zy="闖關爪印"></div>
+    </div>
   </div>
-  <div class="calendar" id="calendar"></div>
-  <div class="legend">
-    <span>沒紀錄</span>
-    <i class="legend__box" data-level="0"></i>
-    <i class="legend__box" data-level="1"></i>
-    <i class="legend__box" data-level="2"></i>
-    <i class="legend__box" data-level="3"></i>
-    <i class="legend__box" data-level="4"></i>
-    <span>全部完成</span>
-  </div>
+  <div class="quest-note" id="quest-note"></div>
+  <div class="map" id="quiz-map"></div>
 </section>
 
 <!-- ════ 家長 ════ -->
@@ -367,9 +351,9 @@
 <!-- ════ 底部分頁 ════ -->
 <nav class="tabbar">
   <button class="tab tab--active" data-view="today"><span class="tab__icon">🐾</span><span class="tab__label" data-zy="今天"></span></button>
+  <button class="tab" data-view="quest"><span class="tab__icon">🎮</span><span class="tab__label" data-zy="挑戰"></span></button>
   <button class="tab" data-view="reward"><span class="tab__icon">🎁</span><span class="tab__label" data-zy="獎勵"></span></button>
   <button class="tab" data-view="week"><span class="tab__icon">📅</span><span class="tab__label" data-zy="本週"></span></button>
-  <button class="tab" data-view="stats"><span class="tab__icon">⭐</span><span class="tab__label" data-zy="紀錄"></span></button>
   <button class="tab" data-view="parent"><span class="tab__icon">🔒</span><span class="tab__label tab__label--plain">家長</span></button>
 </nav>
 

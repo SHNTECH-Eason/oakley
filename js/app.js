@@ -16,7 +16,6 @@
 
   var view = 'today';
   var weekAnchor = Store.today();     // 本週檢視的基準日
-  var calAnchor = Store.today();      // 月曆檢視的基準月
   var parentUnlocked = false;
   var pinBuffer = '';
   var pinStage = 'verify';            // verify | create | confirm
@@ -386,7 +385,6 @@
       });
       renderProgress();
       markNextTask();
-      renderChallengeCard();
       return;
     }
 
@@ -424,7 +422,6 @@
 
     renderProgress();
     markNextTask();
-    renderChallengeCard();
   }
 
   function renderProgress() {
@@ -699,27 +696,20 @@
 
   var quizState = null;      // { set, i, correct, practice, level }
 
-  function renderChallengeCard() {
+  /** 挑戰分頁：上面三個數字，下面整張闖關地圖 */
+  function renderQuest() {
     var stage = Store.quizStage();
-    var done = Store.clearedToday();
     var all = stage > Quiz.STAGES;
-    $('#challenge-card').classList.toggle('is-done', all || done >= Quiz.DAILY_ADVANCE);
-    $('#challenge-sub').textContent = all
-      ? '五十關全部通關了！可以重玩任何一關'
-      : ('第 ' + stage + ' 關・' + Quiz.tierInfo(stage).name +
-         '　今天已前進 ' + done + '/' + Quiz.DAILY_ADVANCE + ' 關');
-  }
 
-  function openQuiz() {
-    var stage = Store.quizStage();
-    $('#quiz-level').textContent = stage > Quiz.STAGES ? '全通關' : ('第 ' + stage + ' 關');
-    $('#quiz-start-meta').textContent =
-      '今天已前進 ' + Store.clearedToday() + ' / ' + Quiz.DAILY_ADVANCE + ' 關　　十題全對就過關';
+    $('#stat-stage').textContent = all ? '🏆' : String(stage);
+    $('#stat-today').textContent = Store.clearedToday() + '/' + Quiz.DAILY_ADVANCE;
+    $('#stat-qpaw').textContent = Store.quizPoints();
+    $('#quest-note').textContent = all
+      ? '五十關全部通關了！可以重玩任何一關'
+      : (Quiz.tierInfo(stage).name + '　十題全對就過關，每天最多前進 ' + Quiz.DAILY_ADVANCE + ' 關');
+
     renderMap();
-    showQuizPanel('start');
-    renderQuizDots(-1);
-    $('#quiz').hidden = false;
-    setTimeout(scrollToCurrentStage, 60);
+    setTimeout(scrollToCurrentStage, 50);
   }
 
   /** 50 個節點左右交錯排成一條路，中間放小爪印當足跡 */
@@ -768,6 +758,7 @@
   }
 
   function scrollToCurrentStage() {
+    if (view !== 'quest') return;
     var node = $('#map-current') || $('.map__done-all');
     if (node) node.scrollIntoView({ block: 'center', behavior: 'auto' });
   }
@@ -784,15 +775,7 @@
     startStage(stage, false);
   }
 
-  function closeQuiz() {
-    $('#quiz').hidden = true;
-    quizState = null;
-    renderChallengeCard();
-    renderTop();
-  }
-
   function showQuizPanel(which) {
-    $('#quiz-start').hidden = which !== 'start';
     $('#quiz-play-panel').hidden = which !== 'play';
     $('#quiz-done').hidden = which !== 'done';
   }
@@ -818,7 +801,15 @@
     };
     $('#quiz-level').textContent = '第 ' + stage + ' 關' + (replay ? '（重玩）' : '');
     showQuizPanel('play');
+    $('#quiz').hidden = false;
     showQuestion();
+  }
+
+  function closeQuiz() {
+    $('#quiz').hidden = true;
+    quizState = null;
+    renderQuest();
+    renderTop();
   }
 
   function showQuestion() {
@@ -983,56 +974,16 @@
       if (s.perfect) perfect++;
     });
     $('#week-note').textContent = '本週集到 ' + paws + ' 個爪印 🐾　全部完成 ' + perfect + ' 天';
-  }
 
-  // ── 紀錄 ────────────────────────────────────────────────
-
-  function renderStats() {
     var pts = Store.totalPoints();
     $('#stat-paw').textContent = pts.balance;
     $('#stat-streak').textContent = Store.streak();
     $('#stat-days').textContent = Store.activeDays();
-    renderCalendar();
   }
 
-  function levelOf(ratio, hasAny) {
-    if (!hasAny) return 0;
-    if (ratio >= 1) return 4;
-    if (ratio >= 0.75) return 3;
-    if (ratio >= 0.4) return 2;
-    return 1;
-  }
-
-  function renderCalendar() {
-    var year = calAnchor.getFullYear();
-    var month = calAnchor.getMonth();
-    var today = Store.today();
-
-    $('#cal-label').textContent = year + '年' + (month + 1) + '月';
-    $('#cal-next').disabled =
-      year > today.getFullYear() || (year === today.getFullYear() && month >= today.getMonth());
-
-    var grid = $('#calendar');
-    grid.textContent = '';
-
-    ['一', '二', '三', '四', '五', '六', '日'].forEach(function (d) {
-      grid.appendChild(el('div', 'calendar__dow', d));
-    });
-
-    var first = new Date(year, month, 1);
-    var lead = (first.getDay() + 6) % 7;              // 週一為第一欄
-    for (var i = 0; i < lead; i++) grid.appendChild(el('div', 'calendar__day calendar__day--empty'));
-
-    var daysInMonth = new Date(year, month + 1, 0).getDate();
-    for (var d = 1; d <= daysInMonth; d++) {
-      var date = new Date(year, month, d);
-      var stats = Store.dayStats(date);
-      var cell = el('div', 'calendar__day' + (sameDay(date, today) ? ' is-today' : ''), String(d));
-      cell.setAttribute('data-level', String(levelOf(stats.ratio, stats.done > 0)));
-      cell.title = Store.dateKey(date) + '　完成 ' + stats.done + '/' + stats.total;
-      grid.appendChild(cell);
-    }
-  }
+  // 原本這裡有一張月曆熱區圖。拿掉的原因：實際使用上作息幾乎天天 100%
+  // （大人是等事情做完才把手機遞過去），所以整張月曆會是同一個顏色，
+  // 它回答不了「我該注意什麼」。真正有變化的是闖關進度，那才是成長紀錄。
 
   // ── 家長：PIN ───────────────────────────────────────────
 
@@ -1464,7 +1415,7 @@
     if (next === 'today') renderToday();
     if (next === 'reward') renderReward();
     if (next === 'week') { weekAnchor = Store.today(); renderWeek(); }
-    if (next === 'stats') { calAnchor = Store.today(); renderStats(); }
+    if (next === 'quest') renderQuest();
     if (next === 'parent') enterParent();
   }
 
@@ -1512,13 +1463,6 @@
     });
     $('#week-next').addEventListener('click', function () {
       weekAnchor = Store.addDays(weekAnchor, 7); renderWeek();
-    });
-
-    $('#cal-prev').addEventListener('click', function () {
-      calAnchor = new Date(calAnchor.getFullYear(), calAnchor.getMonth() - 1, 1); renderCalendar();
-    });
-    $('#cal-next').addEventListener('click', function () {
-      calAnchor = new Date(calAnchor.getFullYear(), calAnchor.getMonth() + 1, 1); renderCalendar();
     });
 
     $('#celebrate-close').addEventListener('click', function () { $('#celebrate').hidden = true; });
@@ -1621,21 +1565,11 @@
     $('#update-check').addEventListener('click', checkForUpdate);
     $('#update-force').addEventListener('click', forceReload);
 
-    $('#challenge-card').addEventListener('click', openQuiz);
     $('#quiz-close').addEventListener('click', closeQuiz);
     $('#quiz-retry').addEventListener('click', function () {
       startStage(quizState ? quizState.stage : Store.quizStage(), quizState && quizState.replay);
     });
-    $('#quiz-again').addEventListener('click', function () {
-      renderMap();
-      showQuizPanel('start');
-      $('#quiz-level').textContent = Store.quizStage() > Quiz.STAGES
-        ? '全通關' : ('第 ' + Store.quizStage() + ' 關');
-      $('#quiz-start-meta').textContent =
-        '今天已前進 ' + Store.clearedToday() + ' / ' + Quiz.DAILY_ADVANCE + ' 關　　十題全對就過關';
-      renderChallengeCard();
-      setTimeout(scrollToCurrentStage, 60);
-    });
+    $('#quiz-again').addEventListener('click', closeQuiz);
 
     $('#give-ok').addEventListener('click', confirmGive);
     $('#give-cancel').addEventListener('click', function () {
@@ -1680,7 +1614,7 @@
     renderToday();
     if (view === 'reward') renderRewardLog();
     if (view === 'week') renderWeek();
-    if (view === 'stats') renderStats();
+    if (view === 'quest') renderQuest();
   }
 
   function initStaticZhuyin() {

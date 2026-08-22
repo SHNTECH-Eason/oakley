@@ -535,9 +535,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
   text-align: center;
 }
 .quiz__panel[hidden] { display: none; }
-.quiz__panel--map { justify-content: flex-start; }
-.quiz__maptop { padding: 6px 0 2px; flex-shrink: 0; }
-
 /* ── 闖關地圖 ─────────────────────────────────────────────
    50 關的蜿蜒路徑。節點左右交錯，中間用小爪印當足跡，
    不用畫 SVG 路徑也讀得出是一條路。                        */
@@ -545,11 +542,22 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .map {
   width: 100%;
   max-width: 420px;
+  margin: 0 auto;
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 4px 0 20px;
 }
+
+.quest-note {
+  font-size: .78rem;
+  font-weight: 500;
+  color: var(--ink-soft);
+  text-align: center;
+  line-height: 1.7;
+  margin: 12px 0 4px;
+}
+.stats--week { margin-top: 14px; margin-bottom: 0; }
 
 .map__tier {
   width: 100%;
