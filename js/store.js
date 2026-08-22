@@ -34,7 +34,6 @@
       // 畫面上顯示的一直都是暱稱，要填全名的話存在雲端那份設定就好。
       child: { name: '', nickname: 'Oaklay' },
       settings: {
-        pin: null,           // 家長 PIN。故意不上傳，每台裝置各自設定
         pointsPerTask: 1,    // 每完成一項的爪印數
         perfectBonus: 5,     // 當日全部完成的額外爪印
         quizStage: 1,        // 數學闖關目前在第幾關（全對才會前進）
@@ -150,6 +149,7 @@
     }
     delete data.settings.quizLevel;
     delete data.settings.quizStreak;
+    delete data.settings.pin;          // 家長密碼已移除，不再保留
     Object.keys(data.quizzes).forEach(function (k) {
       if (!Array.isArray(data.quizzes[k].cleared)) data.quizzes[k].cleared = [];
     });
@@ -462,17 +462,15 @@
     notify({ origin: 'remote', kind: 'record', dateKey: key });
   }
 
-  /** 作息項目與設定以遠端為準，但 PIN 保持各裝置獨立 */
+  /** 作息項目與設定以遠端為準 */
   function applyRemoteProfile(profile) {
     if (!profile) return;
-    var localPin = state.settings.pin;
 
     if (profile.child) Object.assign(state.child, profile.child);
     if (profile.settings) Object.assign(state.settings, profile.settings);
     if (Array.isArray(profile.tasks) && profile.tasks.length) state.tasks = profile.tasks;
     if (Array.isArray(profile.redeemed)) state.redeemed = profile.redeemed;
 
-    state.settings.pin = localPin;
     persist();
     notify({ origin: 'remote', kind: 'profile' });
   }
@@ -531,13 +529,11 @@
     notify({ origin: 'remote', kind: 'all' });
   }
 
-  /** 給 sync 用：目前要上傳的設定（不含 PIN） */
+  /** 給 sync 用：目前要上傳的設定 */
   function profileForSync() {
-    var settings = Object.assign({}, state.settings);
-    delete settings.pin;
     return {
       child: state.child,
-      settings: settings,
+      settings: Object.assign({}, state.settings),
       tasks: state.tasks,
       redeemed: state.redeemed,
       updatedAt: new Date().toISOString()

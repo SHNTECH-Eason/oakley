@@ -218,16 +218,7 @@
 
 <!-- ════ 家長 ════ -->
 <section class="view" id="view-parent">
-  <div class="gate" id="pin-gate">
-    <div class="gate__icon">🔒</div>
-    <div class="gate__title" id="gate-title">請輸入家長密碼</div>
-    <div class="gate__hint" id="gate-hint">四位數字</div>
-    <div class="gate__dots" id="gate-dots"><i></i><i></i><i></i><i></i></div>
-    <div class="keypad" id="keypad"></div>
-    <button class="btn btn--ghost gate__cancel" id="gate-cancel" hidden>取消</button>
-  </div>
-
-  <div class="panel" id="parent-panel" hidden>
+  <div class="panel" id="parent-panel">
     <details class="card" open>
       <summary class="card__head">補登紀錄</summary>
       <div class="card__body">
@@ -238,9 +229,12 @@
     </details>
 
     <details class="card">
-      <summary class="card__head">編輯作息項目</summary>
+      <summary class="card__head">作息項目</summary>
       <div class="card__body">
-        <p class="card__desc">改時間或名稱後按儲存。名稱用「/」分隔會自動斷行對齊，注音會自動加上。</p>
+        <p class="card__desc">
+          改時間或名稱後按儲存。名稱用「/」分隔會自動斷行對齊，注音會自動加上。<br>
+          <b>下方的星期勾選決定這個項目哪幾天要出現</b> —— 例如「出門上學」只勾一到五，週末就不會跑出來，也不會因此算成沒完成。
+        </p>
         <ul class="editor" id="task-editor"></ul>
         <div class="row">
           <button class="btn btn--ghost" id="task-add">＋ 新增項目</button>
@@ -250,11 +244,11 @@
     </details>
 
     <details class="card">
-      <summary class="card__head">點數規則</summary>
+      <summary class="card__head">設定</summary>
       <div class="card__body">
-        <label class="field-row">每完成一項<input type="number" id="cfg-per" class="field field--num" min="1" max="99"></label>
-        <label class="field-row">當天全部完成加碼<input type="number" id="cfg-bonus" class="field field--num" min="0" max="99"></label>
         <label class="field-row">小朋友暱稱<input type="text" id="cfg-nick" class="field" maxlength="12"></label>
+        <label class="field-row">每完成一項給幾個爪印<input type="number" id="cfg-per" class="field field--num" min="1" max="99"></label>
+        <label class="field-row">當天全部完成加碼<input type="number" id="cfg-bonus" class="field field--num" min="0" max="99"></label>
         <label class="field-row">數學闖關進度（第幾關）<input type="number" id="cfg-stage" class="field field--num" min="1" max="50"></label>
         <p class="card__desc" id="cfg-level-hint"></p>
         <label class="field-row">打卡音效<input type="checkbox" id="cfg-sound" class="switch"></label>
@@ -322,20 +316,12 @@
     </details>
 
     <details class="card card--danger">
-      <summary class="card__head">家長密碼與危險區</summary>
+      <summary class="card__head">危險區</summary>
       <div class="card__body">
-        <p class="card__desc" id="pin-hint"></p>
-        <div class="row">
-          <button class="btn btn--ghost" id="pin-set">設定家長密碼</button>
-          <button class="btn btn--ghost" id="pin-remove" hidden>移除密碼</button>
-        </div>
-        <div class="row">
-          <button class="btn btn--danger" id="data-reset">清除所有紀錄</button>
-        </div>
+        <p class="card__desc">會刪掉所有打卡紀錄、特別獎勵與闖關進度，本機和雲端都清掉，無法復原。建議先到「備份與還原」匯出一份。</p>
+        <button class="btn btn--danger" id="data-reset">清除所有紀錄</button>
       </div>
     </details>
-
-    <button class="btn btn--ghost btn--block" id="parent-lock">🔒 鎖定家長模式</button>
   </div>
 </section>
 
@@ -354,7 +340,7 @@
   <button class="tab" data-view="quest"><span class="tab__icon">🎮</span><span class="tab__label" data-zy="挑戰"></span></button>
   <button class="tab" data-view="reward"><span class="tab__icon">🎁</span><span class="tab__label" data-zy="獎勵"></span></button>
   <button class="tab" data-view="week"><span class="tab__icon">📅</span><span class="tab__label" data-zy="本週"></span></button>
-  <button class="tab" data-view="parent"><span class="tab__icon">🔒</span><span class="tab__label tab__label--plain">家長</span></button>
+  <button class="tab" data-view="parent"><span class="tab__icon">⚙️</span><span class="tab__label tab__label--plain">家長</span></button>
 </nav>
 
 <!-- ════ 覆蓋層 ════ -->

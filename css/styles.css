@@ -1,4 +1,4 @@
-/* ═══════════════════════════════════════════════════════════
+﻿/* ═══════════════════════════════════════════════════════════
    Oaklay 汪汪好習慣救援隊
    手機／平板優先。配色沿用實體海報，讓小朋友一眼認得出是同一張表。
    ═══════════════════════════════════════════════════════════ */
@@ -858,48 +858,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 /* ── 家長模式 ─────────────────────────────────────────────── */
 
-.gate { text-align: center; padding-top: 24px; }
-.gate__icon { font-size: 2.6rem; }
-.gate__title { font-size: 1.05rem; font-weight: 900; margin-top: 8px; }
-.gate__hint { font-size: .78rem; color: var(--ink-soft); font-weight: 500; margin-top: 4px; min-height: 1.2em; }
-.gate__hint.is-error { color: var(--danger); font-weight: 700; }
 
-.gate__dots { display: flex; justify-content: center; gap: 12px; margin: 18px 0 22px; }
-.gate__dots i {
-  width: 15px; height: 15px;
-  border-radius: 50%;
-  border: 2.5px solid var(--ink-faint);
-  transition: background .15s, border-color .15s;
-}
-.gate__dots i.is-filled { background: var(--brand); border-color: var(--brand); }
-.gate.is-shaking { animation: shake .4s; }
-@keyframes shake {
-  0%,100% { transform: translateX(0); }
-  25% { transform: translateX(-9px); }
-  75% { transform: translateX(9px); }
-}
-
-.keypad {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 10px;
-  max-width: 270px;
-  margin: 0 auto;
-}
-.keypad button {
-  aspect-ratio: 1.55;
-  border-radius: 16px;
-  border: none;
-  background: var(--card);
-  font-size: 1.35rem;
-  font-weight: 900;
-  box-shadow: var(--shadow);
-}
-.keypad button:active { transform: scale(.94); background: #e2e8f0; }
-.keypad button.is-blank { visibility: hidden; }
-
-.gate__cancel { margin-top: 18px; }
-.gate__cancel[hidden] { display: none; }
 
 .version {
   font-family: ui-monospace, 'Cascadia Mono', Menlo, monospace;

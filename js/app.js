@@ -1,8 +1,12 @@
 ﻿/**
  * 介面邏輯
  *
- * 四個分頁：今天（打卡）、本週（格子表）、紀錄（統計＋月曆）、家長（PIN 保護）。
- * 小朋友只能打卡「當天」，過去的日子要補登得走家長模式 —— 不然他會一次把整週點完。
+ * 五個分頁：今天（打卡）、挑戰（闖關地圖）、獎勵（家長給點）、
+ * 本週（格子表＋統計）、家長（設定）。
+ *
+ * 小朋友只能打卡「當天」，過去的日子要補登得走家長分頁 —— 不然他會一次把整週點完。
+ * 家長分頁沒有密碼保護：小孩是被大人遞過手機點一下，不會自己翻分頁，
+ * 鎖起來擋到的其實是家長自己。
  */
 (function () {
   'use strict';
@@ -16,10 +20,6 @@
 
   var view = 'today';
   var weekAnchor = Store.today();     // 本週檢視的基準日
-  var parentUnlocked = false;
-  var pinBuffer = '';
-  var pinStage = 'verify';            // verify | create | confirm
-  var pinFirstEntry = '';
   var lastRenderedDay = null;
 
   // ── 小工具 ──────────────────────────────────────────────
@@ -985,123 +985,9 @@
   // （大人是等事情做完才把手機遞過去），所以整張月曆會是同一個顏色，
   // 它回答不了「我該注意什麼」。真正有變化的是闖關進度，那才是成長紀錄。
 
-  // ── 家長：PIN ───────────────────────────────────────────
-
-  /**
-   * 進入家長分頁。
-   *
-   * 沒設密碼就直接進去 —— 小孩是被大人遞過手機點一下，不會自己翻分頁，
-   * 每次補登都要輸入密碼只是在擋家長自己。需要鎖的人再自己去設。
-   */
-  function enterParent() {
-    if (!Store.state.settings.pin) { unlockParent(); return; }
-    if (parentUnlocked) { renderParent(); return; }
-    resetGate('verify');
-  }
-
-  function resetGate(stage) {
-    pinBuffer = '';
-    pinFirstEntry = '';
-    pinStage = stage || (Store.state.settings.pin ? 'verify' : 'create');
-    $('#pin-gate').hidden = false;
-    $('#parent-panel').hidden = true;
-    $('#gate-cancel').hidden = pinStage === 'verify';   // 設定中途才給取消
-    renderGate();
-  }
-
-  function renderGate() {
-    var titles = { verify: '請輸入家長密碼', create: '設定家長密碼', confirm: '再輸入一次確認' };
-    var hints = {
-      verify: '四位數字',
-      create: '第一次使用，請設定四位數字',
-      confirm: '確認剛剛設定的密碼'
-    };
-    $('#gate-title').textContent = titles[pinStage];
-    var hint = $('#gate-hint');
-    hint.textContent = hints[pinStage];
-    hint.classList.remove('is-error');
-    renderDots();
-  }
-
-  function renderDots() {
-    $$('#gate-dots i').forEach(function (dot, i) {
-      dot.classList.toggle('is-filled', i < pinBuffer.length);
-    });
-  }
-
-  function gateError(msg) {
-    var hint = $('#gate-hint');
-    hint.textContent = msg;
-    hint.classList.add('is-error');
-    $('#pin-gate').classList.add('is-shaking');
-    setTimeout(function () { $('#pin-gate').classList.remove('is-shaking'); }, 420);
-    pinBuffer = '';
-    renderDots();
-    buzz([40, 40, 40]);
-  }
-
-  function pinPress(key) {
-    if (key === 'del') {
-      pinBuffer = pinBuffer.slice(0, -1);
-      renderDots();
-      return;
-    }
-    if (pinBuffer.length >= 4) return;
-    pinBuffer += key;
-    renderDots();
-    if (pinBuffer.length === 4) setTimeout(pinSubmit, 140);
-  }
-
-  function pinSubmit() {
-    if (pinStage === 'verify') {
-      if (pinBuffer === Store.state.settings.pin) unlockParent();
-      else gateError('密碼不對，再試一次');
-    } else if (pinStage === 'create') {
-      pinFirstEntry = pinBuffer;
-      pinBuffer = '';
-      pinStage = 'confirm';
-      renderGate();
-    } else {
-      if (pinBuffer === pinFirstEntry) {
-        Store.updateSettings({ pin: pinFirstEntry });
-        toast('密碼設定完成，之後進家長分頁要輸入');
-        unlockParent();
-      } else {
-        pinStage = 'create';
-        pinFirstEntry = '';
-        gateError('兩次不一樣，請重新設定');
-      }
-    }
-  }
-
-  function unlockParent() {
-    parentUnlocked = true;
-    pinBuffer = '';
-    $('#pin-gate').hidden = true;
-    $('#parent-panel').hidden = false;
-    renderParent();
-  }
-
-  function lockParent() {
-    parentUnlocked = false;
-    if (!Store.state.settings.pin) return;    // 沒設密碼就沒有鎖這回事
-    resetGate('verify');
-  }
-
-  function buildKeypad() {
-    var pad = $('#keypad');
-    ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫'].forEach(function (k) {
-      var b = el('button', k === '' ? 'is-blank' : null, k);
-      if (k === '') { b.disabled = true; }
-      else b.addEventListener('click', function () { pinPress(k === '⌫' ? 'del' : k); });
-      pad.appendChild(b);
-    });
-  }
-
   // ── 家長：面板 ──────────────────────────────────────────
 
   function renderParent() {
-    if (!parentUnlocked) return;
     var s = Store.state;
     $('#cfg-per').value = s.settings.pointsPerTask;
     $('#cfg-bonus').value = s.settings.perfectBonus;
@@ -1116,13 +1002,6 @@
       '）。十題全對才過關，每天最多前進 ' + Quiz.DAILY_ADVANCE +
       ' 關。太簡單或太難可以直接跳關。';
     if (!$('#backfill-date').value) $('#backfill-date').value = Store.dateKey(Store.today());
-
-    var hasPin = !!s.settings.pin;
-    $('#pin-set').textContent = hasPin ? '變更密碼' : '設定家長密碼';
-    $('#pin-remove').hidden = !hasPin;
-    $('#pin-hint').textContent = hasPin
-      ? '已設定密碼，進入這個分頁需要輸入。切換到其他分頁會自動上鎖。'
-      : '目前沒有設密碼，家長分頁可以直接進入。小朋友是被大人遞手機點一下，通常不需要鎖；擔心他亂按就設一組。';
 
     readVersion();
     renderBackfill();
@@ -1398,15 +1277,13 @@
     remoteRenderTimer = setTimeout(function () {
       lastPawCount = null;
       renderAll();
-      if (parentUnlocked) renderParent();
+      if (view === 'parent') renderParent();
     }, 60);
   }
 
   // ── 分頁切換 ────────────────────────────────────────────
 
   function switchView(next) {
-    if (view === 'parent' && next !== 'parent' && parentUnlocked) lockParent();
-
     view = next;
     $$('.view').forEach(function (v) { v.classList.toggle('view--active', v.id === 'view-' + next); });
     $$('.tab').forEach(function (t) { t.classList.toggle('tab--active', t.dataset.view === next); });
@@ -1416,7 +1293,7 @@
     if (next === 'reward') renderReward();
     if (next === 'week') { weekAnchor = Store.today(); renderWeek(); }
     if (next === 'quest') renderQuest();
-    if (next === 'parent') enterParent();
+    if (next === 'parent') renderParent();
   }
 
   // ── 備份 ────────────────────────────────────────────────
@@ -1532,32 +1409,15 @@
       e.target.value = '';
     });
 
-    $('#pin-set').addEventListener('click', function () { resetGate('create'); });
-
-    $('#pin-remove').addEventListener('click', function () {
-      if (!confirm('移除家長密碼？\n\n之後任何人都能直接進入家長分頁。')) return;
-      Store.updateSettings({ pin: null });
-      renderParent();
-      toast('已移除密碼');
-    });
-
-    $('#gate-cancel').addEventListener('click', function () {
-      // 設定密碼設到一半反悔：有舊密碼就回鎖定，沒有就直接回面板
-      if (Store.state.settings.pin) resetGate('verify');
-      else unlockParent();
-    });
-
     $('#data-reset').addEventListener('click', function () {
-      if (!confirm('這會刪掉所有打卡紀錄和累積的爪印，而且無法復原。\n確定要清除嗎？')) return;
+      if (!confirm('這會刪掉所有打卡紀錄、特別獎勵與闖關進度，而且無法復原。\n確定要清除嗎？')) return;
       if (!confirm('真的確定？建議先匯出一份備份。')) return;
       Store.resetAll();
       lastPawCount = null;
       renderAll();
-      lockParent();
+      renderParent();
       toast('已清除所有資料');
     });
-
-    $('#parent-lock').addEventListener('click', function () { lockParent(); });
 
     wireSync();
 
@@ -1731,7 +1591,6 @@
       if (meta && meta.origin === 'remote') onRemoteChange();
     });
     initStaticZhuyin();
-    buildKeypad();
     wire();
     lastRenderedDay = Store.dateKey(Store.today());
     renderAll();
