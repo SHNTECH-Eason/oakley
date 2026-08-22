@@ -37,8 +37,7 @@
         pin: null,           // 家長 PIN。故意不上傳，每台裝置各自設定
         pointsPerTask: 1,    // 每完成一項的爪印數
         perfectBonus: 5,     // 當日全部完成的額外爪印
-        quizLevel: 1,        // 數學挑戰的難度，連續全對五次自動升一級
-        quizStreak: 0,       // 目前等級已經連續全對幾次
+        quizStage: 1,        // 數學闖關目前在第幾關（全對才會前進）
         sound: true,         // 打卡音效（睡前那一項會響，可以關掉）
         speech: false        // 念出項目名稱與稱讚。五歲還不識字，聽比看有用，
                              // 但合成語音有機械感，所以預設關閉讓家長自己決定
@@ -46,7 +45,7 @@
       tasks: DEFAULT_TASKS.map(function (t) { return Object.assign({}, t); }),
       records: {},           // { 'YYYY-MM-DD': { taskId: ISO 時間字串 } }
       bonuses: [],           // 作息表之外的特別獎勵 [{ id, date, reason, points, at }]
-      quizzes: {},           // 每日數學挑戰 { 'YYYY-MM-DD': { level, correct, total, points, at } }
+      quizzes: {},           // 每日闖關 { 'YYYY-MM-DD': { cleared: [關卡], attempts, points, at } }
       redeemed: [],          // 預留給之後的點數兌換
       updatedAt: null
     };
@@ -132,10 +131,28 @@
     data = data || {};
     data.version = 1;
     data.child = Object.assign(base.child, data.child || {});
-    data.settings = Object.assign(base.settings, data.settings || {});
+
+    // 判斷要不要轉換舊資料，一定要在套用預設值「之前」看原始內容 ——
+    // 預設值會把 quizStage 填成 1，之後就分不出是舊資料還是新使用者了
+    var incoming = data.settings || {};
+    var hadStage = typeof incoming.quizStage === 'number';
+    var oldLevel = Number(incoming.quizLevel) || 0;
+
+    data.settings = Object.assign(base.settings, incoming);
     data.records = data.records || {};
     data.bonuses = Array.isArray(data.bonuses) ? data.bonuses : [];
     data.quizzes = (data.quizzes && typeof data.quizzes === 'object') ? data.quizzes : {};
+
+    // 舊版是「五個難度 × 連續全對升級」，換成 50 關的地圖。
+    // 把當時的難度對應到該階段的第一關，進度不會憑空消失。
+    if (!hadStage && oldLevel > 1) {
+      data.settings.quizStage = (oldLevel - 1) * 10 + 1;
+    }
+    delete data.settings.quizLevel;
+    delete data.settings.quizStreak;
+    Object.keys(data.quizzes).forEach(function (k) {
+      if (!Array.isArray(data.quizzes[k].cleared)) data.quizzes[k].cleared = [];
+    });
     data.redeemed = data.redeemed || [];
     if (!Array.isArray(data.tasks) || !data.tasks.length) {
       data.tasks = base.tasks;
@@ -324,48 +341,67 @@
     }).slice(0, limit || 20);
   }
 
-  // ── 每日數學挑戰 ────────────────────────────────────────────
-
-  var MAX_QUIZ_LEVEL = 5;
-  var LEVEL_UP_STREAK = 5;      // 同一等級連續全對幾次就升級
+  // ── 數學闖關 ────────────────────────────────────────────────
 
   function quizToday() {
     return state.quizzes[dateKey(today())] || null;
   }
 
-  /**
-   * 記下今天的成績並處理升級。
-   *
-   * 升級條件刻意用「連續」全對而不是累計 —— 要證明是真的會了，
-   * 不是矇對幾次。任何一次沒全對就從頭算起。
-   */
-  function addQuizResult(level, correct, total, points) {
-    var key = dateKey(today());
-    var perfect = correct >= total;
-    var s = state.settings;
-    var levelledUp = false;
+  /** 今天已經前進幾關 */
+  function clearedToday() {
+    var t = quizToday();
+    return t && Array.isArray(t.cleared) ? t.cleared.length : 0;
+  }
 
-    if (perfect) {
-      s.quizStreak = (s.quizStreak || 0) + 1;
-      if (s.quizStreak >= LEVEL_UP_STREAK && s.quizLevel < MAX_QUIZ_LEVEL) {
-        s.quizLevel++;
-        s.quizStreak = 0;
-        levelledUp = true;
-      }
-    } else {
-      s.quizStreak = 0;
+  function quizStage() {
+    return Math.min(Quiz.STAGES, Math.max(1, state.settings.quizStage || 1));
+  }
+
+  /** 今天還能不能往前推進（全部通關之後就只剩重玩） */
+  function canAdvance() {
+    return clearedToday() < Quiz.DAILY_ADVANCE && quizStage() <= Quiz.STAGES;
+  }
+
+  /**
+   * 記錄一次挑戰。
+   *
+   * 全對才過關。沒過可以立刻重來，所以不會被卡一整天；
+   * 但每天最多前進三關，有節制才有得期待。
+   * 爪印只在當天第一次挑戰給，重試不再給 —— 獎勵的是「有來挑戰」。
+   */
+  function recordQuizAttempt(stage, correct, total) {
+    var key = dateKey(today());
+    var s = state.settings;
+    var rec = state.quizzes[key] || { date: key, cleared: [], attempts: 0, points: 0, at: null };
+    if (!Array.isArray(rec.cleared)) rec.cleared = [];
+
+    var passed = correct >= total;
+    var gained = 0;
+
+    rec.attempts = (rec.attempts || 0) + 1;
+    if (rec.attempts === 1) gained += Quiz.SHOW_UP_POINTS;
+
+    var advanced = false;
+    if (passed && stage === quizStage() && canAdvance()) {
+      rec.cleared.push(stage);
+      s.quizStage = stage + 1;
+      gained += Quiz.CLEAR_POINTS;
+      advanced = true;
     }
 
-    var result = {
-      date: key, level: level, correct: correct, total: total,
-      points: points, at: new Date().toISOString()
-    };
-    state.quizzes[key] = result;
+    rec.points = (rec.points || 0) + gained;
+    rec.at = new Date().toISOString();
+    state.quizzes[key] = rec;
 
     persist();
-    notify({ origin: 'local', kind: 'quiz', dateKey: key, result: result });
-    notify({ origin: 'local', kind: 'profile' });     // 等級與連勝存在 settings 裡
-    return { result: result, levelledUp: levelledUp, level: s.quizLevel, streak: s.quizStreak };
+    notify({ origin: 'local', kind: 'quiz', dateKey: key, result: rec });
+    if (advanced) notify({ origin: 'local', kind: 'profile' });   // 進度存在 settings 裡
+
+    return {
+      passed: passed, advanced: advanced, gained: gained,
+      stage: quizStage(), clearedToday: rec.cleared.length,
+      allDone: quizStage() > Quiz.STAGES
+    };
   }
 
   function applyRemoteQuiz(key, data) {
@@ -554,10 +590,11 @@
     bonusPoints: bonusPoints,
     quizPoints: quizPoints,
     recentBonuses: recentBonuses,
-    MAX_QUIZ_LEVEL: MAX_QUIZ_LEVEL,
-    LEVEL_UP_STREAK: LEVEL_UP_STREAK,
     quizToday: quizToday,
-    addQuizResult: addQuizResult,
+    quizStage: quizStage,
+    clearedToday: clearedToday,
+    canAdvance: canAdvance,
+    recordQuizAttempt: recordQuizAttempt,
     applyRemoteQuiz: applyRemoteQuiz,
     mergeRemoteQuizzes: mergeRemoteQuizzes,
     streak: streak,

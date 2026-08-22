@@ -700,30 +700,88 @@
   var quizState = null;      // { set, i, correct, practice, level }
 
   function renderChallengeCard() {
-    var today = Store.quizToday();
-    var lv = Quiz.levelInfo(Store.state.settings.quizLevel || 1);
-    var card = $('#challenge-card');
-    card.classList.toggle('is-done', !!today);
-    $('#challenge-sub').textContent = today
-      ? ('今天答對 ' + today.correct + '/' + today.total + '　可以再練習')
-      : ('第 ' + lv.n + ' 關・' + lv.name + '　十題');
+    var stage = Store.quizStage();
+    var done = Store.clearedToday();
+    var all = stage > Quiz.STAGES;
+    $('#challenge-card').classList.toggle('is-done', all || done >= Quiz.DAILY_ADVANCE);
+    $('#challenge-sub').textContent = all
+      ? '五十關全部通關了！可以重玩任何一關'
+      : ('第 ' + stage + ' 關・' + Quiz.tierInfo(stage).name +
+         '　今天已前進 ' + done + '/' + Quiz.DAILY_ADVANCE + ' 關');
   }
 
   function openQuiz() {
-    var lv = Quiz.levelInfo(Store.state.settings.quizLevel || 1);
-    var today = Store.quizToday();
-    var streak = Store.state.settings.quizStreak || 0;
-
-    $('#quiz-level').textContent = '第 ' + lv.n + ' 關';
-    $('#quiz-start-meta').textContent = lv.name + '（例：' + lv.desc + '）　共 ' + Quiz.TOTAL + ' 題';
-    $('#quiz-streak').textContent = today
-      ? '今天已經挑戰過了，答對 ' + today.correct + '/' + today.total
-      : '連續全對 ' + streak + ' / ' + Store.LEVEL_UP_STREAK + '　全對五次就升關';
-    $('#quiz-play').textContent = today ? '再玩一次（沒有獎勵）' : '開始挑戰';
-
+    var stage = Store.quizStage();
+    $('#quiz-level').textContent = stage > Quiz.STAGES ? '全通關' : ('第 ' + stage + ' 關');
+    $('#quiz-start-meta').textContent =
+      '今天已前進 ' + Store.clearedToday() + ' / ' + Quiz.DAILY_ADVANCE + ' 關　　十題全對就過關';
+    renderMap();
     showQuizPanel('start');
     renderQuizDots(-1);
     $('#quiz').hidden = false;
+    setTimeout(scrollToCurrentStage, 60);
+  }
+
+  /** 50 個節點左右交錯排成一條路，中間放小爪印當足跡 */
+  function renderMap() {
+    var map = $('#quiz-map');
+    var current = Store.quizStage();
+    map.textContent = '';
+
+    var sides = ['center', 'right', 'center', 'left'];
+
+    for (var s = 1; s <= Quiz.STAGES; s++) {
+      if ((s - 1) % Quiz.PER_TIER === 0) {
+        var tier = Quiz.tierInfo(s);
+        var banner = el('div', 'map__tier' + (s > current ? ' map__tier--locked' : ''),
+          '第 ' + tier.from + '–' + tier.to + ' 關　' + tier.name);
+        banner.setAttribute('data-color', tier.color);
+        banner.style.setProperty('--c', 'var(--c)');
+        map.appendChild(banner);
+      } else {
+        var trail = el('div', 'map__trail');
+        for (var t = 0; t < 3; t++) trail.appendChild(svgIcon('paw'));
+        map.appendChild(trail);
+      }
+
+      var row = el('div', 'map__row');
+      row.setAttribute('data-side', sides[(s - 1) % sides.length]);
+
+      var state = s < current ? 'done' : (s === current ? 'now' : 'locked');
+      var capped = state === 'now' && !Store.canAdvance();
+      var node = el('button', 'map__node map__node--' + state + (capped ? ' map__node--capped' : ''),
+        String(s));
+      node.setAttribute('data-color', Quiz.tierInfo(s).color);
+      node.setAttribute('data-stage', String(s));
+      if (state === 'now') node.id = 'map-current';
+      node.setAttribute('aria-label', '第 ' + s + ' 關' +
+        (state === 'done' ? '，已通過' : state === 'locked' ? '，還沒解鎖' : ''));
+
+      node.addEventListener('click', function () { onStageTap(Number(this.dataset.stage)); });
+      row.appendChild(node);
+      map.appendChild(row);
+    }
+
+    if (current > Quiz.STAGES) {
+      map.appendChild(el('div', 'map__done-all', '🏆 五十關全部通關！你太厲害了'));
+    }
+  }
+
+  function scrollToCurrentStage() {
+    var node = $('#map-current') || $('.map__done-all');
+    if (node) node.scrollIntoView({ block: 'center', behavior: 'auto' });
+  }
+
+  function onStageTap(stage) {
+    var current = Store.quizStage();
+
+    if (stage > current) { toast('先通過前面的關卡'); return; }
+    if (stage < current) { startStage(stage, true); return; }      // 重玩，不計獎勵
+    if (!Store.canAdvance()) {
+      toast('今天已經前進 ' + Quiz.DAILY_ADVANCE + ' 關了，明天再繼續！');
+      return;
+    }
+    startStage(stage, false);
   }
 
   function closeQuiz() {
@@ -753,14 +811,12 @@
     }
   }
 
-  function startQuiz(practice) {
-    var level = Store.state.settings.quizLevel || 1;
+  function startStage(stage, replay) {
     quizState = {
-      set: Quiz.makeSet(level),
-      i: 0, correct: 0, level: level,
-      practice: practice || !!Store.quizToday(),   // 今天挑戰過了就只能練習
-      marks: []
+      set: Quiz.makeSet(stage),
+      i: 0, correct: 0, stage: stage, replay: !!replay, marks: []
     };
+    $('#quiz-level').textContent = '第 ' + stage + ' 關' + (replay ? '（重玩）' : '');
     showQuizPanel('play');
     showQuestion();
   }
@@ -772,10 +828,10 @@
     $('#quiz-mark').className = 'quiz__mark';
     renderQuizDots(quizState.i);
 
-    // 第一關給爪印圖示當數數的鷹架，五歲還沒辦法純抽象心算
+    // 第一階段給爪印圖示當數數的鷹架，五歲還沒辦法純抽象心算
     var aid = $('#quiz-aid');
     aid.textContent = '';
-    if (quizState.level === 1) {
+    if (Quiz.tierOf(quizState.stage) === 1) {
       [q.a, q.b].forEach(function (n, idx) {
         if (idx) aid.appendChild(el('span', null, q.op));
         var g = el('span', 'quiz__aid-group');
@@ -829,24 +885,35 @@
 
   function finishQuiz() {
     var correct = quizState.correct;
-    var perfect = correct >= Quiz.TOTAL;
-    var practice = quizState.practice;
-    var points = practice ? 0 : Quiz.score(correct);
-    var outcome = null;
+    var passed = correct >= Quiz.TOTAL;
+    var stage = quizState.stage;
+    var replay = quizState.replay;
+    var outcome = replay ? null : Store.recordQuizAttempt(stage, correct, Quiz.TOTAL);
 
-    if (!practice) outcome = Store.addQuizResult(quizState.level, correct, Quiz.TOTAL, points);
-
-    $('#quiz-done-title').textContent = '';
-    Zhuyin.fill($('#quiz-done-title'), perfect ? '全部答對' : (correct >= 6 ? '很棒喔' : '有挑戰就很棒'));
+    Zhuyin.fill($('#quiz-done-title'),
+      passed ? '過關了' : (correct >= 7 ? '差一點點' : '再試一次'));
     $('#quiz-score').textContent = correct + ' / ' + Quiz.TOTAL;
-    $('#quiz-reward').textContent = practice ? '練習模式，不計獎勵' : '+' + points + ' 🐾';
+    $('#quiz-reward').textContent = replay
+      ? '重玩不計獎勵'
+      : (outcome.gained ? '+' + outcome.gained + ' 🐾' : '這次沒有爪印，但有來就很棒');
+
+    // 沒過關就把「再試一次」放出來，全對才需要回地圖看下一關
+    $('#quiz-retry').hidden = passed;
+    $('#quiz-again').textContent = passed ? '回地圖' : '回地圖';
 
     var up = $('#quiz-levelup');
-    if (outcome && outcome.levelledUp) {
-      up.textContent = '🎉 升到第 ' + outcome.level + ' 關：' + Quiz.levelInfo(outcome.level).name;
+    if (outcome && outcome.allDone) {
+      up.textContent = '🏆 五十關全部通關！';
       up.hidden = false;
-    } else if (!practice && perfect) {
-      up.textContent = '連續全對 ' + outcome.streak + ' / ' + Store.LEVEL_UP_STREAK;
+    } else if (outcome && outcome.advanced) {
+      up.textContent = '⭐ 解鎖第 ' + outcome.stage + ' 關　今天已前進 ' +
+                       outcome.clearedToday + '/' + Quiz.DAILY_ADVANCE + ' 關';
+      up.hidden = false;
+    } else if (passed && replay) {
+      up.textContent = '重玩全對，厲害！';
+      up.hidden = false;
+    } else if (passed && outcome && !outcome.advanced) {
+      up.textContent = '今天已經前進 ' + Quiz.DAILY_ADVANCE + ' 關了，明天再繼續';
       up.hidden = false;
     } else {
       up.hidden = true;
@@ -856,8 +923,8 @@
     renderQuizDots(-1);
     renderTop();
 
-    if (perfect && !practice) { confettiRain(50); play('perfect'); buzz([30,60,30,60,120]); }
-    else if (!practice) { play('done', 1); }
+    if (passed) { confettiRain(50); play('perfect'); buzz([30,60,30,60,120]); }
+    else { play('undo'); }
   }
 
   // ── 本週 ────────────────────────────────────────────────
@@ -1091,16 +1158,12 @@
     $('#cfg-sound').checked = s.settings.sound !== false;
     $('#cfg-speech').checked = !!s.settings.speech;
 
-    var sel = $('#cfg-level');
-    if (!sel.options.length) {
-      Quiz.LEVELS.forEach(function (lv) {
-        sel.appendChild(new Option('第 ' + lv.n + ' 關　' + lv.name, lv.n));
-      });
-    }
-    sel.value = String(s.settings.quizLevel || 1);
+    var stage = Store.quizStage();
+    $('#cfg-stage').value = String(Math.min(Quiz.STAGES, stage));
     $('#cfg-level-hint').textContent =
-      '連續全對 ' + Store.LEVEL_UP_STREAK + ' 次會自動升關（目前 ' +
-      (s.settings.quizStreak || 0) + ' 次）。手動改難度會把連勝歸零。';
+      '共 ' + Quiz.STAGES + ' 關，目前第 ' + stage + ' 關（' + Quiz.tierInfo(stage).name +
+      '）。十題全對才過關，每天最多前進 ' + Quiz.DAILY_ADVANCE +
+      ' 關。太簡單或太難可以直接跳關。';
     if (!$('#backfill-date').value) $('#backfill-date').value = Store.dateKey(Store.today());
 
     var hasPin = !!s.settings.pin;
@@ -1487,11 +1550,8 @@
     });
 
     $('#cfg-save').addEventListener('click', function () {
-      var lv = Number($('#cfg-level').value) || 1;
-      // 手動改難度就把連勝歸零，不然換關之後那個數字沒有意義
-      if (lv !== Store.state.settings.quizLevel) {
-        Store.updateSettings({ quizLevel: lv, quizStreak: 0 });
-      }
+      var stage = Math.max(1, Math.min(Quiz.STAGES, Number($('#cfg-stage').value) || 1));
+      if (stage !== Store.quizStage()) Store.updateSettings({ quizStage: stage });
       Store.updateSettings({
         pointsPerTask: Math.max(1, Number($('#cfg-per').value) || 1),
         perfectBonus: Math.max(0, Number($('#cfg-bonus').value) || 0),
@@ -1563,9 +1623,19 @@
 
     $('#challenge-card').addEventListener('click', openQuiz);
     $('#quiz-close').addEventListener('click', closeQuiz);
-    $('#quiz-play').addEventListener('click', function () { startQuiz(false); });
-    $('#quiz-practice').addEventListener('click', function () { startQuiz(true); });
-    $('#quiz-again').addEventListener('click', closeQuiz);
+    $('#quiz-retry').addEventListener('click', function () {
+      startStage(quizState ? quizState.stage : Store.quizStage(), quizState && quizState.replay);
+    });
+    $('#quiz-again').addEventListener('click', function () {
+      renderMap();
+      showQuizPanel('start');
+      $('#quiz-level').textContent = Store.quizStage() > Quiz.STAGES
+        ? '全通關' : ('第 ' + Store.quizStage() + ' 關');
+      $('#quiz-start-meta').textContent =
+        '今天已前進 ' + Store.clearedToday() + ' / ' + Quiz.DAILY_ADVANCE + ' 關　　十題全對就過關';
+      renderChallengeCard();
+      setTimeout(scrollToCurrentStage, 60);
+    });
 
     $('#give-ok').addEventListener('click', confirmGive);
     $('#give-cancel').addEventListener('click', function () {

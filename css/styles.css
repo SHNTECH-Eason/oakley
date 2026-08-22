@@ -535,6 +535,100 @@ button { font: inherit; color: inherit; cursor: pointer; }
   text-align: center;
 }
 .quiz__panel[hidden] { display: none; }
+.quiz__panel--map { justify-content: flex-start; }
+.quiz__maptop { padding: 6px 0 2px; flex-shrink: 0; }
+
+/* ── 闖關地圖 ─────────────────────────────────────────────
+   50 關的蜿蜒路徑。節點左右交錯，中間用小爪印當足跡，
+   不用畫 SVG 路徑也讀得出是一條路。                        */
+
+.map {
+  width: 100%;
+  max-width: 420px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 4px 0 20px;
+}
+
+.map__tier {
+  width: 100%;
+  margin: 14px 0 6px;
+  padding: 7px 14px;
+  border-radius: 999px;
+  font-size: .78rem;
+  font-weight: 900;
+  color: #fff;
+  background: var(--c, #7c3aed);
+  box-shadow: var(--shadow);
+}
+.map__tier--locked { background: #cbd5e1; color: #64748b; }
+
+.map__row { width: 100%; display: flex; }
+.map__row[data-side="left"]   { justify-content: flex-start; padding-left: 12%; }
+.map__row[data-side="center"] { justify-content: center; }
+.map__row[data-side="right"]  { justify-content: flex-end; padding-right: 12%; }
+
+.map__trail {
+  display: flex;
+  gap: 5px;
+  padding: 3px 0;
+  opacity: .5;
+}
+.map__trail svg { width: 13px; height: 13px; fill: #c4b5fd; }
+
+.map__node {
+  position: relative;
+  width: 62px; height: 62px;
+  border-radius: 50%;
+  border: 4px solid #ddd6fe;
+  background: #fff;
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: var(--ink-faint);
+  display: grid;
+  place-items: center;
+  box-shadow: var(--shadow);
+  transition: transform .12s ease;
+}
+.map__node:active { transform: scale(.93); }
+
+.map__node--done {
+  background: var(--c, #7c3aed);
+  border-color: var(--c, #7c3aed);
+  color: #fff;
+}
+.map__node--done::after {
+  content: '⭐';
+  position: absolute;
+  bottom: -9px;
+  font-size: 1.05rem;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,.25));
+}
+
+.map__node--now {
+  border-color: var(--brand);
+  color: var(--brand);
+  animation: node-pulse 1.5s ease-in-out infinite;
+}
+@keyframes node-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(37,99,235,.45), var(--shadow); }
+  50%      { box-shadow: 0 0 0 10px rgba(37,99,235,0), var(--shadow); }
+}
+
+.map__node--locked { background: #f1f5f9; border-color: #e2e8f0; color: #cbd5e1; }
+.map__node--capped { border-color: var(--gold); color: var(--gold); animation: none; }
+
+.map__done-all {
+  margin-top: 18px;
+  padding: 14px 18px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, var(--gold) 0%, var(--accent) 100%);
+  color: #fff;
+  font-weight: 900;
+  line-height: 1.8;
+  box-shadow: var(--shadow-lg);
+}
 
 .quiz__hero {
   width: 120px; height: 120px;

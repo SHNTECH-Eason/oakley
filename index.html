@@ -143,14 +143,13 @@
     <div class="quiz__level" id="quiz-level"></div>
   </div>
 
-  <!-- 開始畫面 -->
-  <div class="quiz__panel" id="quiz-start">
-    <div class="quiz__hero"></div>
-    <div class="quiz__big" data-zy="數學挑戰"></div>
-    <div class="quiz__meta" id="quiz-start-meta"></div>
-    <div class="quiz__streak" id="quiz-streak"></div>
-    <button class="btn btn--primary quiz__play" id="quiz-play">開始挑戰</button>
-    <button class="btn btn--ghost" id="quiz-practice">練習模式（沒有獎勵）</button>
+  <!-- 闖關地圖 -->
+  <div class="quiz__panel quiz__panel--map" id="quiz-start">
+    <div class="quiz__maptop">
+      <div class="quiz__big" data-zy="數學闖關"></div>
+      <div class="quiz__meta" id="quiz-start-meta"></div>
+    </div>
+    <div class="map" id="quiz-map"></div>
   </div>
 
   <!-- 答題畫面 -->
@@ -163,12 +162,15 @@
 
   <!-- 結算畫面 -->
   <div class="quiz__panel" id="quiz-done" hidden>
-    <div class="quiz__hero quiz__hero--big"></div>
+    <div class="quiz__hero quiz__hero--big" id="quiz-done-hero"></div>
     <div class="quiz__big" id="quiz-done-title"></div>
     <div class="quiz__score" id="quiz-score"></div>
     <div class="quiz__reward" id="quiz-reward"></div>
     <div class="quiz__levelup" id="quiz-levelup" hidden></div>
-    <button class="btn btn--primary quiz__play" id="quiz-again">好！</button>
+    <div class="row">
+      <button class="btn btn--ghost" id="quiz-retry" hidden>再試一次</button>
+      <button class="btn btn--primary quiz__play" id="quiz-again">回地圖</button>
+    </div>
   </div>
 </div>
 
@@ -269,7 +271,7 @@
         <label class="field-row">每完成一項<input type="number" id="cfg-per" class="field field--num" min="1" max="99"></label>
         <label class="field-row">當天全部完成加碼<input type="number" id="cfg-bonus" class="field field--num" min="0" max="99"></label>
         <label class="field-row">小朋友暱稱<input type="text" id="cfg-nick" class="field" maxlength="12"></label>
-        <label class="field-row">數學挑戰難度<select id="cfg-level" class="field field--sel"></select></label>
+        <label class="field-row">數學闖關進度（第幾關）<input type="number" id="cfg-stage" class="field field--num" min="1" max="50"></label>
         <p class="card__desc" id="cfg-level-hint"></p>
         <label class="field-row">打卡音效<input type="checkbox" id="cfg-sound" class="switch"></label>
         <label class="field-row">語音朗讀<input type="checkbox" id="cfg-speech" class="switch"></label>
