@@ -536,59 +536,118 @@ button { font: inherit; color: inherit; cursor: pointer; }
 }
 .stats--week { margin-top: 14px; margin-bottom: 0; }
 
-.map__tier {
+/* 每個階段一個場景區塊，背景隨主題變化 */
+.map__section {
+  position: relative;
   width: 100%;
-  margin: 14px 0 6px;
-  padding: 7px 14px;
-  border-radius: 999px;
-  font-size: .78rem;
+  padding: 0 0 18px;
+  margin-bottom: 10px;
+  border-radius: 22px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.map__section[data-scene="meadow"] { background: linear-gradient(180deg, #dcfce7 0%, #bbf7d0 100%); }
+.map__section[data-scene="forest"] { background: linear-gradient(180deg, #bbf7d0 0%, #86efac 100%); }
+.map__section[data-scene="beach"]  { background: linear-gradient(180deg, #cffafe 0%, #fde68a 100%); }
+.map__section[data-scene="sky"]    { background: linear-gradient(180deg, #dbeafe 0%, #bfdbfe 100%); }
+.map__section[data-scene="space"]  { background: linear-gradient(180deg, #1e1b4b 0%, #312e81 100%); }
+.map__section[data-scene="space"] .map__num { color: #fff; }
+.map__section.is-locked { filter: grayscale(.85) opacity(.62); }
+
+/* 場景裝飾：純點綴，不能擋到節點 */
+.map__scenery { position: absolute; inset: 0; pointer-events: none; }
+.map__deco { position: absolute; opacity: .55; }
+.map__section[data-scene="space"] .map__deco { opacity: .8; }
+
+.map__tier {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  align-self: stretch;
+  margin: 0 0 8px;
+  padding: 9px 14px;
+  border-radius: 22px 22px 16px 16px;
+  font-size: .76rem;
   font-weight: 900;
   color: #fff;
   background: var(--c, #7c3aed);
   box-shadow: var(--shadow);
 }
-.map__tier--locked { background: #cbd5e1; color: #64748b; }
+.map__tier-place {
+  background: rgba(255,255,255,.25);
+  border: 2px solid rgba(255,255,255,.5);
+  border-radius: 999px;
+  padding: 1px 9px;
+  flex-shrink: 0;
+}
 
-.map__row { width: 100%; display: flex; }
+.map__row { position: relative; width: 100%; display: flex; }
 .map__row[data-side="left"]   { justify-content: flex-start; padding-left: 12%; }
 .map__row[data-side="center"] { justify-content: center; }
 .map__row[data-side="right"]  { justify-content: flex-end; padding-right: 12%; }
 
 .map__trail {
+  position: relative;
   display: flex;
   gap: 5px;
   padding: 3px 0;
-  opacity: .5;
+  opacity: .45;
 }
-.map__trail svg { width: 13px; height: 13px; fill: #c4b5fd; }
+.map__trail svg { width: 13px; height: 13px; fill: #78716c; }
+.map__section[data-scene="space"] .map__trail svg { fill: #a5b4fc; }
 
 .map__node {
   position: relative;
   width: 62px; height: 62px;
   border-radius: 50%;
-  border: 4px solid #ddd6fe;
-  background: #fff;
-  font-size: 1.15rem;
-  font-weight: 900;
-  color: var(--ink-faint);
+  border: 4px solid #fff;
+  background: rgba(255,255,255,.92);
   display: grid;
   place-items: center;
   box-shadow: var(--shadow);
   transition: transform .12s ease;
 }
 .map__node:active { transform: scale(.93); }
+.map__num { font-size: 1.15rem; font-weight: 900; color: var(--ink-faint); }
+
+/* 每 10 關的關主，比一般節點大一圈還插旗子 */
+.map__node--goal { width: 74px; height: 74px; }
+.map__node--goal .map__num { font-size: 1.3rem; }
+.map__flag {
+  position: absolute;
+  top: -16px; right: -10px;
+  width: 26px; height: 26px;
+  filter: drop-shadow(0 2px 3px rgba(0,0,0,.3));
+}
 
 .map__node--done {
   background: var(--c, #7c3aed);
-  border-color: var(--c, #7c3aed);
-  color: #fff;
+  border-color: #fff;
 }
+.map__node--done .map__num { color: #fff; }
 .map__node--done::after {
   content: '⭐';
   position: absolute;
   bottom: -9px;
   font-size: 1.05rem;
   filter: drop-shadow(0 1px 2px rgba(0,0,0,.25));
+}
+
+/* 通過的關卡顯示最快紀錄，他會自己想破 */
+.map__best {
+  position: absolute;
+  top: -12px;
+  font-size: .58rem;
+  font-weight: 900;
+  color: var(--ink);
+  background: #fff;
+  border-radius: 999px;
+  padding: 1px 7px;
+  white-space: nowrap;
+  box-shadow: var(--shadow);
 }
 
 .map__node--now {
@@ -601,7 +660,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
   50%      { box-shadow: 0 0 0 10px rgba(37,99,235,0), var(--shadow); }
 }
 
-.map__node--locked { background: #f1f5f9; border-color: #e2e8f0; color: #cbd5e1; }
+.map__node--locked { background: rgba(241,245,249,.85); border-color: rgba(255,255,255,.7); }
+.map__node--locked .map__num { color: #cbd5e1; }
 
 .map__done-all {
   margin-top: 18px;
@@ -664,7 +724,17 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .quiz__mark.is-wrong { color: var(--ink-soft); }
 
 .quiz__score { font-size: 2.4rem; font-weight: 900; color: #7c3aed; font-variant-numeric: tabular-nums; }
-.quiz__reward { font-size: 1.05rem; font-weight: 900; color: var(--gold); }
+.quiz__reward { font-size: 1.15rem; font-weight: 900; color: #b45309; }
+.quiz__time {
+  font-size: .88rem;
+  font-weight: 700;
+  color: var(--ink-soft);
+  background: #fff;
+  border-radius: 999px;
+  padding: 6px 16px;
+  box-shadow: var(--shadow);
+}
+.quiz__time[hidden] { display: none; }
 .quiz__levelup {
   font-size: .95rem;
   font-weight: 900;
@@ -780,6 +850,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .stat--paw  { border-top-color: var(--gold); }
 .stat--fire { border-top-color: #ef4444; }
 .stat--day  { border-top-color: var(--brand); }
+.stat--coin { border-top-color: #f59e0b; }
+.stat--coin .stat__num { color: #b45309; }
 .stat__num { font-size: 1.7rem; font-weight: 900; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .stat__label { font-size: .72rem; color: var(--ink-soft); margin-top: 4px; }
 

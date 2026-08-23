@@ -703,53 +703,95 @@
 
     $('#stat-stage').textContent = all ? '🏆' : String(stage);
     $('#stat-today').textContent = String(Store.clearedToday());
-    $('#stat-qpaw').textContent = Store.quizPoints();
+    $('#stat-coin').textContent = Store.coins();
     $('#quest-note').textContent = all
       ? '五十關全部通關了！可以重玩任何一關'
-      : (Quiz.tierInfo(stage).name + '　十題全對就過關，想闖幾關都可以');
+      : (Quiz.tierInfo(stage).place + '・' + Quiz.tierInfo(stage).name +
+         '　十題全對就過關，每過一關 +' + Quiz.COINS_PER_STAGE + ' 金幣');
 
     renderMap();
     setTimeout(scrollToCurrentStage, 50);
   }
 
-  /** 50 個節點左右交錯排成一條路，中間放小爪印當足跡 */
+  /**
+   * 每 10 關一個場景：草原 → 森林 → 海邊 → 天空 → 太空。
+   * 裝飾物的位置寫死在這裡（圖示、左%、上%、大小 px），
+   * 全部是 SVG 自己畫的，沒有外部圖檔 —— 離線照樣顯示，也不用擔心授權。
+   */
+  var SCENERY = {
+    meadow: [['tree', 4, 14, 34], ['tree', 85, 32, 26], ['cloud', 66, 4, 32], ['tree', 12, 64, 28]],
+    forest: [['tree', 2, 8, 42], ['tree', 87, 24, 36], ['tree', 8, 54, 34], ['tree', 80, 72, 30]],
+    beach:  [['cloud', 6, 6, 36], ['cloud', 72, 28, 30], ['star4', 88, 64, 18]],
+    sky:    [['cloud', 2, 10, 42], ['cloud', 76, 36, 34], ['cloud', 14, 68, 30], ['cloud', 68, 86, 26]],
+    space:  [['star4', 6, 8, 20], ['star4', 86, 22, 26], ['star4', 16, 50, 16],
+             ['star4', 78, 72, 22], ['star4', 40, 90, 14]]
+  };
+
+  function sceneryFor(scene) {
+    var box = el('div', 'map__scenery');
+    (SCENERY[scene] || []).forEach(function (d) {
+      var g = svgIcon(d[0], 'map__deco');
+      g.style.left = d[1] + '%';
+      g.style.top = d[2] + '%';
+      g.style.width = d[3] + 'px';
+      g.style.height = d[3] + 'px';
+      box.appendChild(g);
+    });
+    return box;
+  }
+
   function renderMap() {
     var map = $('#quiz-map');
     var current = Store.quizStage();
     map.textContent = '';
 
     var sides = ['center', 'right', 'center', 'left'];
+    var section = null;
 
     for (var s = 1; s <= Quiz.STAGES; s++) {
+      var tier = Quiz.tierInfo(s);
+
       if ((s - 1) % Quiz.PER_TIER === 0) {
-        var tier = Quiz.tierInfo(s);
-        // 顏色靠 data-color 的屬性選擇器帶 --c 進來就好。
-        // 之前這裡多寫了一行 style.setProperty('--c', 'var(--c)')，
-        // 那是循環參照會讓變數失效，橫幅顏色一直是回退值。
-        var banner = el('div', 'map__tier' + (s > current ? ' map__tier--locked' : ''),
-          '第 ' + tier.from + '–' + tier.to + ' 關　' + tier.name);
-        banner.setAttribute('data-color', tier.color);
-        map.appendChild(banner);
+        // 顏色靠 data-color 的屬性選擇器帶 --c 進來，不要另外寫 inline style
+        section = el('div', 'map__section' + (s > current ? ' is-locked' : ''));
+        section.setAttribute('data-scene', tier.scene);
+        section.setAttribute('data-color', tier.color);
+        section.appendChild(sceneryFor(tier.scene));
+
+        var banner = el('div', 'map__tier');
+        banner.appendChild(el('span', 'map__tier-place', tier.place));
+        banner.appendChild(el('span', null, '第 ' + tier.from + '–' + tier.to + ' 關　' + tier.name));
+        section.appendChild(banner);
+        map.appendChild(section);
       } else {
         var trail = el('div', 'map__trail');
         for (var t = 0; t < 3; t++) trail.appendChild(svgIcon('paw'));
-        map.appendChild(trail);
+        section.appendChild(trail);
       }
 
       var row = el('div', 'map__row');
       row.setAttribute('data-side', sides[(s - 1) % sides.length]);
 
       var state = s < current ? 'done' : (s === current ? 'now' : 'locked');
-      var node = el('button', 'map__node map__node--' + state, String(s));
-      node.setAttribute('data-color', Quiz.tierInfo(s).color);
+      var milestone = s % Quiz.PER_TIER === 0;
+      var node = el('button', 'map__node map__node--' + state + (milestone ? ' map__node--goal' : ''));
+      node.appendChild(el('span', 'map__num', String(s)));
+      if (milestone) node.appendChild(svgIcon('flag', 'map__flag'));
+
+      node.setAttribute('data-color', tier.color);
       node.setAttribute('data-stage', String(s));
       if (state === 'now') node.id = 'map-current';
+
+      var best = Store.bestTime(s);
+      if (state === 'done' && best) node.appendChild(el('span', 'map__best', Quiz.fmtTime(best)));
+
       node.setAttribute('aria-label', '第 ' + s + ' 關' +
-        (state === 'done' ? '，已通過' : state === 'locked' ? '，還沒解鎖' : ''));
+        (state === 'done' ? '，已通過' : state === 'locked' ? '，還沒解鎖' : '') +
+        (best ? '，最快 ' + Quiz.fmtTime(best) : ''));
 
       node.addEventListener('click', function () { onStageTap(Number(this.dataset.stage)); });
       row.appendChild(node);
-      map.appendChild(row);
+      section.appendChild(row);
     }
 
     if (current > Quiz.STAGES) {
@@ -793,7 +835,8 @@
   function startStage(stage, replay) {
     quizState = {
       set: Quiz.makeSet(stage),
-      i: 0, correct: 0, stage: stage, replay: !!replay, marks: []
+      i: 0, correct: 0, stage: stage, replay: !!replay, marks: [],
+      startedAt: Date.now()      // 只記錄花多久，不倒數
     };
     $('#quiz-level').textContent = '第 ' + stage + ' 關' + (replay ? '（重玩）' : '');
     showQuizPanel('play');
@@ -870,16 +913,29 @@
     var passed = correct >= Quiz.TOTAL;
     var stage = quizState.stage;
     var replay = quizState.replay;
-    var outcome = replay ? null : Store.recordQuizAttempt(stage, correct, Quiz.TOTAL);
+    var elapsed = Date.now() - quizState.startedAt;
+    var outcome = replay ? null : Store.recordQuizAttempt(stage, correct, Quiz.TOTAL, elapsed);
 
     Zhuyin.fill($('#quiz-done-title'),
       passed ? '過關了' : (correct >= 7 ? '差一點點' : '再試一次'));
     $('#quiz-score').textContent = correct + ' / ' + Quiz.TOTAL;
-    $('#quiz-reward').textContent = replay
-      ? '重玩不計獎勵'
-      : (outcome.gained ? '+' + outcome.gained + ' 🐾'
-        : (outcome.cappedOut ? '今天的爪印拿滿了，但可以繼續往前闖！'
-          : '這次沒有爪印，但有來就很棒'));
+
+    var reward = '這次沒有金幣，但有來就很棒';
+    if (replay) reward = '重玩不計金幣';
+    else if (outcome.coinsGained) reward = '+' + outcome.coinsGained + ' 金幣';
+    $('#quiz-reward').textContent = reward;
+
+    // 計時是紀錄不是壓力，只在過關時報，而且不倒數
+    var timeBox = $('#quiz-time');
+    if (passed) {
+      timeBox.hidden = false;
+      timeBox.textContent = '⏱ 花了 ' + Quiz.fmtTime(elapsed) +
+        (outcome && outcome.isBest ? '　🎉 破紀錄了！'
+          : (outcome && outcome.best && outcome.best < elapsed
+              ? '（最快 ' + Quiz.fmtTime(outcome.best) + '）' : ''));
+    } else {
+      timeBox.hidden = true;
+    }
 
     // 沒過關就把「再試一次」放出來，直接重來不用回地圖再點一次
     $('#quiz-retry').hidden = passed;
@@ -887,6 +943,10 @@
     var up = $('#quiz-levelup');
     if (outcome && outcome.allDone) {
       up.textContent = '🏆 五十關全部通關！';
+      up.hidden = false;
+    } else if (outcome && outcome.tierDone) {
+      up.textContent = '🚩 打完「' + Quiz.tierInfo(stage).place + '」！額外 +' +
+                       Quiz.COINS_PER_TIER + ' 金幣';
       up.hidden = false;
     } else if (outcome && outcome.advanced) {
       up.textContent = '⭐ 解鎖第 ' + outcome.stage + ' 關　今天已過 ' +
@@ -988,8 +1048,8 @@
     $('#cfg-stage').value = String(Math.min(Quiz.STAGES, stage));
     $('#cfg-level-hint').textContent =
       '共 ' + Quiz.STAGES + ' 關，目前第 ' + stage + ' 關（' + Quiz.tierInfo(stage).name +
-      '）。十題全對才過關，關卡數不限，但爪印一天最多 ' + Quiz.DAILY_POINT_CAP +
-      ' 個。太簡單或太難可以直接跳關。';
+      '）。十題全對才過關，每過一關 +' + Quiz.COINS_PER_STAGE +
+      ' 金幣，關卡數不限。太簡單或太難可以直接跳關。';
     if (!$('#backfill-date').value) $('#backfill-date').value = Store.dateKey(Store.today());
 
     readVersion();

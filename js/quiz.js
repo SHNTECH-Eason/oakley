@@ -20,20 +20,21 @@
   var STAGES = 50;
   var PER_TIER = 10;
 
-  // 想闖幾關就闖幾關，不擋。但爪印一天有上限 ——
-  // 爪印是全 App 共用的貨幣，如果闖關可以無限賺，作息表就變得沒份量了。
-  // 上限訂在 14，跟一天作息全破（8 + 5 = 13）差不多。
-  // 超過之後關卡照樣往前推進，只是不再給爪印：往前走本身就是獎勵。
-  var SHOW_UP_POINTS = 2;      // 當天第一次挑戰就給，答錯也算
-  var CLEAR_POINTS = 4;        // 每過一關
-  var DAILY_POINT_CAP = 14;
+  // 闖關給的是「金幣」，不是爪印。兩種貨幣刻意分開：
+  //   爪印 = 習慣的貨幣，靠每天做該做的事和家長給獎累積
+  //   金幣 = 本事的貨幣，靠實力闖關累積
+  // 分開之後就不用擔心闖關賺太快把作息表稀釋掉，關卡也不必限制一天幾關。
+  var COINS_PER_STAGE = 10;
+  var COINS_PER_TIER = 50;     // 每打完一個階段（10 關）的額外獎勵
 
+  // 每個階段一個場景，關卡往前推進就像走過一趟旅程：
+  // 草地 → 森林 → 海邊 → 天空 → 太空
   var TIERS = [
-    { name: '10 以內加法',    desc: '3 + 4',   color: 'amber'   },
-    { name: '10 以內加減',    desc: '8 − 3',   color: 'emerald' },
-    { name: '20 以內加減',    desc: '15 − 7',  color: 'blue'    },
-    { name: '兩位數不進位',   desc: '23 + 15', color: 'purple'  },
-    { name: '兩位數進位借位', desc: '27 + 18', color: 'night'   }
+    { name: '10 以內加法',    desc: '3 + 4',   color: 'amber',   scene: 'meadow', place: '草原' },
+    { name: '10 以內加減',    desc: '8 − 3',   color: 'emerald', scene: 'forest', place: '森林' },
+    { name: '20 以內加減',    desc: '15 − 7',  color: 'blue',    scene: 'beach',  place: '海邊' },
+    { name: '兩位數不進位',   desc: '23 + 15', color: 'purple',  scene: 'sky',    place: '天空' },
+    { name: '兩位數進位借位', desc: '27 + 18', color: 'night',   scene: 'space',  place: '太空' }
   ];
 
   function rnd(min, max) { return min + Math.floor(Math.random() * (max - min + 1)); }
@@ -128,9 +129,20 @@
     TOTAL: TOTAL,
     STAGES: STAGES,
     PER_TIER: PER_TIER,
-    SHOW_UP_POINTS: SHOW_UP_POINTS,
-    CLEAR_POINTS: CLEAR_POINTS,
-    DAILY_POINT_CAP: DAILY_POINT_CAP,
+    COINS_PER_STAGE: COINS_PER_STAGE,
+    COINS_PER_TIER: COINS_PER_TIER,
+
+    /** 通過 n 關總共值多少金幣（每滿一個階段有額外獎勵） */
+    coinsFor: function (cleared) {
+      var n = Math.max(0, cleared);
+      return n * COINS_PER_STAGE + Math.floor(n / PER_TIER) * COINS_PER_TIER;
+    },
+
+    /** 把毫秒念成「1 分 20 秒」 */
+    fmtTime: function (ms) {
+      var s = Math.round(ms / 1000);
+      return s < 60 ? (s + ' 秒') : (Math.floor(s / 60) + ' 分 ' + (s % 60) + ' 秒');
+    },
     TIERS: TIERS,
     tierOf: tierOf,
     tierInfo: tierInfo,

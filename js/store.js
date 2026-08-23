@@ -38,6 +38,7 @@
         pointsPerTask: 1,    // 每完成一項的爪印數
         perfectBonus: 5,     // 當日全部完成的額外爪印
         quizStage: 1,        // 數學闖關目前在第幾關（全對才會前進）
+        bestTimes: {},       // 每一關的最佳完成時間（毫秒）
         sound: true,         // 打卡音效（睡前那一項會響，可以關掉）
         speech: false        // 念出項目名稱與稱讚。五歲還不識字，聽比看有用，
                              // 但合成語音有機械感，所以預設關閉讓家長自己決定
@@ -258,11 +259,16 @@
       if (expected > 0 && done >= expected) sum += bonus;
     });
 
+    // 闖關賺的是金幣，不進爪印。兩種貨幣分開才不會互相稀釋。
     var bonus = bonusPoints();
-    var quiz = quizPoints();
     var used = state.redeemed.reduce(function (a, r) { return a + (r.cost || 0); }, 0);
-    var earned = sum + bonus + quiz;
-    return { earned: earned, routine: sum, bonus: bonus, quiz: quiz, used: used, balance: earned - used };
+    var earned = sum + bonus;
+    return { earned: earned, routine: sum, bonus: bonus, used: used, balance: earned - used };
+  }
+
+  /** 闖關金幣：由已通過的關卡數直接算出來，不另外存，資料不會對不上 */
+  function coins() {
+    return Quiz.coinsFor(quizStage() - 1);
   }
 
   /** 作息表之外的特別獎勵總點數 */
@@ -270,12 +276,6 @@
     return state.bonuses.reduce(function (a, b) { return a + (Number(b.points) || 0); }, 0);
   }
 
-  /** 數學挑戰累積的點數 */
-  function quizPoints() {
-    return Object.keys(state.quizzes).reduce(function (a, k) {
-      return a + (Number(state.quizzes[k].points) || 0);
-    }, 0);
-  }
 
   /**
    * 連續全破天數。
@@ -384,44 +384,52 @@
   /**
    * 記錄一次挑戰。
    *
-   * 全對才過關。沒過可以立刻重來，所以不會被卡一整天，關卡也不限一天幾關。
-   * 但爪印一天有上限：爪印是全 App 共用的貨幣，闖關能無限賺的話
-   * 作息表就沒份量了。到頂之後照樣能往前推進，只是不再給爪印。
+   * 全對才過關。沒過可以立刻重來，所以不會被卡一整天，關卡數也不限。
+   * 過關拿金幣，金幣由關卡進度直接算出來，這裡只負責推進度與記時間。
+   *
+   * elapsed 是這一關花的毫秒數。刻意不做倒數計時 —— 五歲學數學最怕
+   * 時間壓力，倒數歸零是個失敗狀態，他會為了搶時間亂猜。
+   * 只記錄花多久並留下最佳成績，他會自己想破紀錄。
    */
-  function recordQuizAttempt(stage, correct, total) {
+  function recordQuizAttempt(stage, correct, total, elapsed) {
     var key = dateKey(today());
     var s = state.settings;
-    var rec = state.quizzes[key] || { date: key, cleared: [], attempts: 0, points: 0, at: null };
+    var rec = state.quizzes[key] || { date: key, cleared: [], attempts: 0, at: null };
     if (!Array.isArray(rec.cleared)) rec.cleared = [];
 
     var passed = correct >= total;
-    var earned = rec.points || 0;
-    var room = Math.max(0, Quiz.DAILY_POINT_CAP - earned);
-    var gained = 0;
-
+    var before = coins();
     rec.attempts = (rec.attempts || 0) + 1;
-    if (rec.attempts === 1) gained += Math.min(room, Quiz.SHOW_UP_POINTS);
 
     var advanced = false;
+    var best = null, isBest = false;
+
     if (passed && stage === quizStage() && canAdvance()) {
       rec.cleared.push(stage);
       s.quizStage = stage + 1;
-      gained += Math.min(Math.max(0, room - gained), Quiz.CLEAR_POINTS);
       advanced = true;
     }
 
-    rec.points = earned + gained;
+    if (passed && elapsed > 0) {
+      s.bestTimes = s.bestTimes || {};
+      var prev = s.bestTimes[stage];
+      if (!prev || elapsed < prev) { s.bestTimes[stage] = elapsed; isBest = !!prev; }
+      best = s.bestTimes[stage];
+    }
+
     rec.at = new Date().toISOString();
     state.quizzes[key] = rec;
 
     persist();
     notify({ origin: 'local', kind: 'quiz', dateKey: key, result: rec });
-    if (advanced) notify({ origin: 'local', kind: 'profile' });   // 進度存在 settings 裡
+    if (advanced || passed) notify({ origin: 'local', kind: 'profile' });  // 進度與最佳時間都在 settings
 
     return {
-      passed: passed, advanced: advanced, gained: gained,
+      passed: passed, advanced: advanced,
+      coinsGained: coins() - before,
       stage: quizStage(), clearedToday: rec.cleared.length,
-      cappedOut: rec.points >= Quiz.DAILY_POINT_CAP,
+      elapsed: elapsed, best: best, isBest: isBest,
+      tierDone: advanced && (stage % Quiz.PER_TIER === 0),
       allDone: quizStage() > Quiz.STAGES
     };
   }
@@ -606,7 +614,11 @@
     dayStats: dayStats,
     totalPoints: totalPoints,
     bonusPoints: bonusPoints,
-    quizPoints: quizPoints,
+    coins: coins,
+    bestTime: function (stage) {
+      var t = state.settings.bestTimes || {};
+      return t[stage] || null;
+    },
     recentBonuses: recentBonuses,
     quizToday: quizToday,
     quizStage: quizStage,
