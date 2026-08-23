@@ -353,23 +353,35 @@
   // ── 頂部 ────────────────────────────────────────────────
 
   var lastPawCount = null;
+  var lastTopKind = null;
 
+  /**
+   * 頂部的數字跟著分頁走：闖關那頁看金幣，其他頁看爪印。
+   * 兩種貨幣各自代表不同的事，在哪一頁就看哪一個才不會混淆。
+   */
   function renderTop() {
     var s = Store.state;
     $('#child-name').textContent = s.child.nickname || s.child.name;
     $('#today-date').textContent = fmtDate(Store.today());
 
-    var balance = Store.totalPoints().balance;
-    var numEl = $('#paw-count');
-    numEl.textContent = balance;
+    var onQuest = view === 'quest';
+    var kind = onQuest ? 'coin' : 'paw';
+    var value = onQuest ? Store.coins() : Store.totalPoints().balance;
 
-    if (lastPawCount !== null && balance !== lastPawCount) {
+    $('#top-icon').setAttribute('href', onQuest ? '#i-coin' : '#i-paw');
+    $('#paw-total').classList.toggle('paw-total--coin', onQuest);
+    $('#paw-count').textContent = value;
+    $('#paw-total').setAttribute('aria-label', (onQuest ? '金幣 ' : '爪印 ') + value);
+
+    // 只有同一種貨幣的數字真的變動才彈跳，單純換分頁不算
+    if (lastTopKind === kind && lastPawCount !== null && value !== lastPawCount) {
       var badge = $('#paw-total');
       badge.classList.remove('is-bumped');
       void badge.offsetWidth;                   // 重新觸發動畫
       badge.classList.add('is-bumped');
     }
-    lastPawCount = balance;
+    lastTopKind = kind;
+    lastPawCount = value;
   }
 
   // ── 今天 ────────────────────────────────────────────────
@@ -1441,6 +1453,8 @@
     $$('.view').forEach(function (v) { v.classList.toggle('view--active', v.id === 'view-' + next); });
     $$('.tab').forEach(function (t) { t.classList.toggle('tab--active', t.dataset.view === next); });
     window.scrollTo(0, 0);
+
+    renderTop();                                // 頂部的貨幣要跟著分頁換
 
     if (next === 'today') renderToday();
     if (next === 'reward') renderReward();

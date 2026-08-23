@@ -133,6 +133,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
   flex-shrink: 0;
 }
 .paw-total__icon { width: 18px; height: 18px; fill: #fde047; }
+/* 闖關那頁換成金幣，底色也偏金黃提示這是另一種貨幣 */
+.paw-total--coin {
+  background: rgba(253, 224, 71, .3);
+  border-color: rgba(253, 224, 71, .75);
+}
+.paw-total--coin .paw-total__icon { width: 20px; height: 20px; }
 .paw-total__num { font-size: 1.1rem; font-weight: 900; font-variant-numeric: tabular-nums; }
 .paw-total.is-bumped { animation: bump .45s ease; }
 
