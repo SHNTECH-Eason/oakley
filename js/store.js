@@ -38,6 +38,7 @@
         pointsPerTask: 1,    // 每完成一項的爪印數
         perfectBonus: 5,     // 當日全部完成的額外爪印
         quizStage: 1,        // 數學闖關目前在第幾關（全對才會前進）
+        dailyAdvance: 3,     // 一天最多往前推進幾關（0 = 不限）
         bestTimes: {},       // 每一關的最佳完成時間（毫秒）
         sound: true,         // 打卡音效（睡前那一項會響，可以關掉）
         speech: false        // 念出項目名稱與稱讚。五歲還不識字，聽比看有用，
@@ -415,9 +416,21 @@
     return Math.min(Quiz.STAGES, Math.max(1, state.settings.quizStage || 1));
   }
 
-  /** 還有沒有關卡可以往前推進（全部通關之後就只剩重玩） */
+  /** 一天最多往前推進幾關。0 表示不限 */
+  function dailyLimit() {
+    var n = state.settings.dailyAdvance;
+    return typeof n === 'number' ? Math.max(0, n) : 3;
+  }
+
+  /** 今天還可以往前推進幾關（不限時回傳 Infinity） */
+  function advancesLeft() {
+    var limit = dailyLimit();
+    return limit === 0 ? Infinity : Math.max(0, limit - clearedToday());
+  }
+
+  /** 還能不能往前推進：關卡沒打完，而且今天的額度還沒用光 */
   function canAdvance() {
-    return quizStage() <= Quiz.STAGES;
+    return quizStage() <= Quiz.STAGES && advancesLeft() > 0;
   }
 
   /**
@@ -663,6 +676,8 @@
     quizStage: quizStage,
     clearedToday: clearedToday,
     canAdvance: canAdvance,
+    dailyLimit: dailyLimit,
+    advancesLeft: advancesLeft,
     recordQuizAttempt: recordQuizAttempt,
     applyRemoteQuiz: applyRemoteQuiz,
     mergeRemoteQuizzes: mergeRemoteQuizzes,

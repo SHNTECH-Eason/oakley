@@ -745,13 +745,25 @@
     var stage = Store.quizStage();
     var all = stage > Quiz.STAGES;
 
+    var limit = Store.dailyLimit();
+    var left = Store.advancesLeft();
+
     $('#stat-stage').textContent = all ? '🏆' : String(stage);
-    $('#stat-today').textContent = String(Store.clearedToday());
+    $('#stat-today').textContent = limit
+      ? (Store.clearedToday() + '/' + limit)
+      : String(Store.clearedToday());
     $('#stat-coin').textContent = Store.coins();
-    $('#quest-note').textContent = all
-      ? '五十關全部通關了！可以重玩任何一關'
-      : (Quiz.tierInfo(stage).place + '・' + Quiz.tierInfo(stage).name +
-         '　十題全對就過關，這裡每過一關 +' + Quiz.coinsOf(stage) + ' 金幣');
+
+    // 額度要在他開始之前就看得到 —— 玩到一半才被擋是最差的體驗
+    var note;
+    if (all) note = '五十關全部通關了！可以重玩任何一關';
+    else if (left === 0) note = '今天的關卡闖完了，明天再來！已經過的關還可以重玩練習';
+    else {
+      note = Quiz.tierInfo(stage).place + '・' + Quiz.tierInfo(stage).name +
+             '　過一關 +' + Quiz.coinsOf(stage) + ' 金幣';
+      if (limit) note += '　今天還可以闖 ' + left + ' 關';
+    }
+    $('#quest-note').textContent = note;
 
     renderMap();
     setTimeout(scrollToCurrentStage, 50);
@@ -839,10 +851,13 @@
       row.setAttribute('data-side', sides[(s - 1) % sides.length]);
 
       var state = s < current ? 'done' : (s === current ? 'now' : 'locked');
+      var resting = state === 'now' && !Store.canAdvance() && current <= Quiz.STAGES;
       var milestone = s % Quiz.PER_TIER === 0;
-      var node = el('button', 'map__node map__node--' + state + (milestone ? ' map__node--goal' : ''));
+      var node = el('button', 'map__node map__node--' + state +
+        (milestone ? ' map__node--goal' : '') + (resting ? ' map__node--rest' : ''));
       node.appendChild(el('span', 'map__num', String(s)));
       if (milestone) node.appendChild(svgIcon('flag', 'map__flag'));
+      if (resting) node.appendChild(el('span', 'map__best', '明天見'));
 
       node.setAttribute('data-color', tier.color);
       node.setAttribute('data-stage', String(s));
@@ -877,6 +892,11 @@
 
     if (stage > current) { toast('先通過前面的關卡'); return; }
     if (stage < current) { startStage(stage, true); return; }      // 重玩，不計獎勵
+    if (!Store.canAdvance()) {
+      // 只擋「往前推進」，已通過的關卡照樣能重玩，不是把人趕走
+      toast('今天闖完 ' + Store.dailyLimit() + ' 關了，明天再來！舊的關卡還可以重玩');
+      return;
+    }
     startStage(stage, false);
   }
 
@@ -1016,8 +1036,9 @@
                        Quiz.COINS_PER_TIER_BONUS + ' 金幣';
       up.hidden = false;
     } else if (outcome && outcome.advanced) {
-      up.textContent = '⭐ 解鎖第 ' + outcome.stage + ' 關　今天已過 ' +
-                       outcome.clearedToday + ' 關';
+      var left = Store.advancesLeft();
+      up.textContent = '⭐ 解鎖第 ' + outcome.stage + ' 關' +
+        (left === Infinity ? '' : (left > 0 ? '　今天還可以闖 ' + left + ' 關' : '　今天的關卡闖完了'));
       up.hidden = false;
     } else if (passed && replay) {
       up.textContent = '重玩全對，厲害！';
@@ -1125,11 +1146,14 @@
 
     var stage = Store.quizStage();
     $('#cfg-stage').value = String(Math.min(Quiz.STAGES, stage));
+    $('#cfg-daily').value = String(Store.dailyLimit());
     $('#cfg-level-hint').textContent =
-      '共 ' + Quiz.STAGES + ' 關，目前第 ' + stage + ' 關（' + Quiz.tierInfo(stage).name +
-      '）。十題全對才過關，關卡數不限。每關的金幣＝所在場景編號（草原 1 到太空 5），' +
-      '打完一整個場景額外 +' + Quiz.COINS_PER_TIER_BONUS +
-      '。太簡單或太難可以直接跳關。';
+      '共 ' + Quiz.STAGES + ' 關，目前第 ' + stage + '（' + Quiz.tierInfo(stage).name +
+      '），今天已前進 ' + Store.clearedToday() + ' 關。十題全對才過關，' +
+      '每關金幣＝場景編號（草原 1 到太空 5），打完一整個場景額外 +' +
+      Quiz.COINS_PER_TIER_BONUS + '。' +
+      '「一天最多前進幾關」填 0 表示不限；額度用完仍可重玩已通過的關卡。' +
+      '太簡單或太難可以直接跳關。';
     if (!$('#backfill-date').value) $('#backfill-date').value = Store.dateKey(Store.today());
 
     readVersion();
@@ -1507,6 +1531,9 @@
     $('#cfg-save').addEventListener('click', function () {
       var stage = Math.max(1, Math.min(Quiz.STAGES, Number($('#cfg-stage').value) || 1));
       if (stage !== Store.quizStage()) Store.updateSettings({ quizStage: stage });
+      Store.updateSettings({
+        dailyAdvance: Math.max(0, Math.min(20, Number($('#cfg-daily').value) || 0))
+      });
       Store.updateSettings({
         pointsPerTask: Math.max(1, Number($('#cfg-per').value) || 1),
         perfectBonus: Math.max(0, Number($('#cfg-bonus').value) || 0),

@@ -720,6 +720,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .map__node--locked { background: rgba(241,245,249,.85); border-color: rgba(255,255,255,.7); }
 .map__node--locked .map__num { color: #cbd5e1; }
 
+/* 今天的額度用完：不呼吸發光了，改成金框標「明天見」 */
+.map__node--rest { border-color: var(--gold); animation: none; }
+.map__node--rest .map__num { color: var(--gold); }
+.map__node--rest .map__best { color: #b45309; }
+
 .map__done-all {
   margin-top: 18px;
   padding: 14px 18px;
