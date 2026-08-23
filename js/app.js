@@ -804,8 +804,9 @@
       node.setAttribute('data-stage', String(s));
       if (state === 'now') node.id = 'map-current';
 
+      // 最快紀錄印在按鈕上。圓形節點塞不下中文，用 38" / 1'20" 的短寫法。
       var best = Store.bestTime(s);
-      if (state === 'done' && best) node.appendChild(el('span', 'map__best', Quiz.fmtTime(best)));
+      if (state === 'done' && best) node.appendChild(el('span', 'map__best', Quiz.shortTime(best)));
 
       node.setAttribute('aria-label', '第 ' + s + ' 關' +
         (state === 'done' ? '，已通過' : state === 'locked' ? '，還沒解鎖' : '') +

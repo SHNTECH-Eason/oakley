@@ -143,6 +143,13 @@
       var s = Math.round(ms / 1000);
       return s < 60 ? (s + ' 秒') : (Math.floor(s / 60) + ' 分 ' + (s % 60) + ' 秒');
     },
+
+    /** 按鈕上的短版：38" / 1'20" —— 圓形節點裡塞不下中文 */
+    shortTime: function (ms) {
+      var s = Math.round(ms / 1000);
+      if (s < 60) return s + '"';
+      return Math.floor(s / 60) + "'" + (s % 60 < 10 ? '0' : '') + (s % 60) + '"';
+    },
     TIERS: TIERS,
     tierOf: tierOf,
     tierInfo: tierInfo,

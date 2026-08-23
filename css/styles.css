@@ -608,21 +608,25 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 .map__node {
   position: relative;
-  width: 62px; height: 62px;
+  width: 64px; height: 64px;
   border-radius: 50%;
   border: 4px solid #fff;
   background: rgba(255,255,255,.92);
-  display: grid;
-  place-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
   box-shadow: var(--shadow);
   transition: transform .12s ease;
 }
 .map__node:active { transform: scale(.93); }
-.map__num { font-size: 1.15rem; font-weight: 900; color: var(--ink-faint); }
+.map__num { font-size: 1.15rem; font-weight: 900; line-height: 1; color: var(--ink-faint); }
 
 /* 每 10 關的關主，比一般節點大一圈還插旗子 */
-.map__node--goal { width: 74px; height: 74px; }
-.map__node--goal .map__num { font-size: 1.3rem; }
+.map__node--goal { width: 78px; height: 78px; }
+.map__node--goal .map__num { font-size: 1.35rem; }
+.map__node--goal .map__best { font-size: .58rem; }
 .map__flag {
   position: absolute;
   top: -16px; right: -10px;
@@ -643,18 +647,14 @@ button { font: inherit; color: inherit; cursor: pointer; }
   filter: drop-shadow(0 1px 2px rgba(0,0,0,.25));
 }
 
-/* 通過的關卡顯示最快紀錄，他會自己想破 */
+/* 通過的關卡把最快紀錄直接印在按鈕上，他會自己想破 */
 .map__best {
-  position: absolute;
-  top: -12px;
-  font-size: .58rem;
+  font-size: .52rem;
   font-weight: 900;
-  color: var(--ink);
-  background: #fff;
-  border-radius: 999px;
-  padding: 1px 7px;
+  line-height: 1;
+  letter-spacing: -.02em;
   white-space: nowrap;
-  box-shadow: var(--shadow);
+  color: rgba(255,255,255,.92);
 }
 
 .map__node--now {
