@@ -270,6 +270,7 @@
     <div class="pager__label" id="week-label"></div>
     <button class="pager__btn" id="week-next" aria-label="下一週">›</button>
   </div>
+  <div class="week-dots" id="week-dots"></div>
   <div class="week-scroll"><table class="week" id="week-grid"></table></div>
   <div class="week-note" id="week-note"></div>
 
@@ -437,6 +438,18 @@
 </nav>
 
 <!-- ════ 覆蓋層 ════ -->
+<!-- 每週全勤：一週只會出現一次，做得比每日的更大更久 -->
+<div class="celebrate celebrate--week" id="week-celebrate" hidden>
+  <div class="celebrate__box">
+    <div class="celebrate__hero buddy__art" id="week-hero"></div>
+    <div class="week-stars" id="week-stars"></div>
+    <div class="celebrate__title" data-zy="本週全勤"></div>
+    <div class="celebrate__sub" id="week-sub"></div>
+    <div class="celebrate__bonus">＋<span id="week-bonus">10</span> 🐾</div>
+    <button class="btn btn--primary" id="week-close">耶！</button>
+  </div>
+</div>
+
 <div class="celebrate" id="celebrate" hidden>
   <div class="celebrate__box">
     <div class="celebrate__hero buddy__art" id="celebrate-hero"></div>

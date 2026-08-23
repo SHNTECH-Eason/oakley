@@ -454,6 +454,56 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .week__cell[data-state="na"] { background: repeating-linear-gradient(45deg, #f1f5f9 0 4px, #e2e8f0 4px 8px); border-color: transparent; }
 .week__cell.is-today { box-shadow: 0 0 0 2px var(--brand); }
 
+/* 七顆點：這週哪幾天全破了 */
+.week-dots {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.week-dot {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: .72rem;
+  font-weight: 900;
+  color: var(--ink-faint);
+  background: #fff;
+  border: 2.5px solid var(--line);
+}
+.week-dot.is-on {
+  background: #22c55e;
+  border-color: #22c55e;
+  color: #fff;
+}
+.week-dot__medal { font-size: 1.35rem; margin-left: 2px; animation: bump .5s ease; }
+
+/* 每週全勤的慶祝：七顆星依序點亮，把這一刻拉長 */
+.celebrate--week .celebrate__box {
+  border-color: #22c55e;
+  background: linear-gradient(160deg, #fff 0%, #dcfce7 100%);
+  max-width: 340px;
+}
+.week-stars {
+  display: flex;
+  justify-content: center;
+  gap: 3px;
+  margin: 2px 0 6px;
+}
+.week-star {
+  width: 26px; height: 26px;
+  fill: #f59e0b;
+  opacity: 0;
+  animation: star-pop .5s cubic-bezier(.3,1.6,.6,1) forwards;
+}
+@keyframes star-pop {
+  0%   { opacity: 0; transform: scale(.2) rotate(-60deg); }
+  70%  { opacity: 1; transform: scale(1.35) rotate(10deg); }
+  100% { opacity: 1; transform: scale(1) rotate(0); }
+}
+
 .week-note {
   margin-top: 10px;
   font-size: .78rem;

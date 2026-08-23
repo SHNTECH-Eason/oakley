@@ -261,9 +261,13 @@
 
     // 闖關賺的是金幣，不進爪印。兩種貨幣分開才不會互相稀釋。
     var bonus = bonusPoints();
+    var weekly = perfectWeeks() * WEEKLY_BONUS;
     var used = state.redeemed.reduce(function (a, r) { return a + (r.cost || 0); }, 0);
-    var earned = sum + bonus;
-    return { earned: earned, routine: sum, bonus: bonus, used: used, balance: earned - used };
+    var earned = sum + bonus + weekly;
+    return {
+      earned: earned, routine: sum, bonus: bonus, weekly: weekly,
+      used: used, balance: earned - used
+    };
   }
 
   /** 闖關金幣：由已通過的關卡數直接算出來，不另外存，資料不會對不上 */
@@ -292,6 +296,41 @@
       if (count > 3650) break;          // 保險，避免資料異常時無限迴圈
     }
     return count;
+  }
+
+  // ── 每週全勤 ────────────────────────────────────────────────
+
+  var WEEKLY_BONUS = 10;
+
+  /** 傳入該週的星期一，判斷七天是不是都全破 */
+  function isWeekPerfect(monday) {
+    for (var i = 0; i < 7; i++) {
+      if (!dayStats(addDays(monday, i)).perfect) return false;
+    }
+    return true;
+  }
+
+  /**
+   * 全勤的週數。
+   * 跟爪印一樣由紀錄即時算出、不另外儲存 —— 所以之後補登上週漏掉的那天，
+   * 那一週的全勤獎會自動補上，不會因為當下沒觸發就永遠拿不到。
+   */
+  function perfectWeeks() {
+    var seen = {}, count = 0;
+    Object.keys(state.records).forEach(function (k) {
+      var wk = dateKey(startOfWeek(parseKey(k)));
+      if (seen[wk]) return;
+      seen[wk] = true;
+      if (isWeekPerfect(parseKey(wk))) count++;
+    });
+    return count;
+  }
+
+  /** 這一週七天各自有沒有全破，給畫面上那排小圓點用 */
+  function weekMarks(monday) {
+    var out = [];
+    for (var i = 0; i < 7; i++) out.push(dayStats(addDays(monday, i)).perfect);
+    return out;
   }
 
   /** 有紀錄的總天數（至少完成一項） */
@@ -629,6 +668,10 @@
     mergeRemoteQuizzes: mergeRemoteQuizzes,
     streak: streak,
     activeDays: activeDays,
+    WEEKLY_BONUS: WEEKLY_BONUS,
+    isWeekPerfect: isWeekPerfect,
+    perfectWeeks: perfectWeeks,
+    weekMarks: weekMarks,
 
     toggle: toggle,
     addBonus: addBonus,

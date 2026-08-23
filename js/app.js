@@ -153,6 +153,17 @@
       });
       tone(2093, t + 0.52, 0.7, 0.3, 'sine');
       tone(1568, t + 0.60, 0.8, 0.24, 'sine');
+    } else if (kind === 'week') {
+      // 每週全勤：兩段式號角，比每日長一倍以上
+      [523, 659, 784, 1046, 1318, 1568].forEach(function (f, i) {
+        tone(f, t + i * 0.11, 0.5, 0.45);
+      });
+      [1046, 1318, 1568, 2093].forEach(function (f, i) {
+        tone(f, t + 0.78 + i * 0.13, 0.6, 0.42);
+      });
+      tone(2093, t + 1.35, 1.1, 0.34, 'sine');
+      tone(1568, t + 1.45, 1.2, 0.28, 'sine');
+      tone(1046, t + 1.55, 1.3, 0.24, 'sine');
     } else if (kind === 'replay') {
       // 再看一次：溫和的兩音，不搶戲
       tone(1046, t, 0.09, 0.32);
@@ -491,7 +502,9 @@
       return;
     }
 
+    var monday = Store.startOfWeek(day);
     var wasPerfect = Store.dayStats(day).perfect;
+    var wasWeekPerfect = Store.isWeekPerfect(monday);
     Store.toggle(day, task.id);
 
     btn.classList.add('is-done');
@@ -542,7 +555,10 @@
       showBuddy(praise, rare);
     }
 
-    if (!wasPerfect && nowPerfect) setTimeout(showCelebrate, 380);
+    // 剛好把整週補滿時，放大的那個就好，不要兩個慶祝疊在一起
+    var weekJustDone = !wasWeekPerfect && Store.isWeekPerfect(monday);
+    if (weekJustDone) setTimeout(showWeekCelebrate, 420);
+    else if (!wasPerfect && nowPerfect) setTimeout(showCelebrate, 380);
   }
 
   /** 已完成的項目再點：重播慶祝，不動資料 */
@@ -582,6 +598,34 @@
     confettiRain(70);
     play('perfect');
     buzz([30, 60, 30, 60, 120]);
+  }
+
+  /**
+   * 每週全勤。一週只會出現一次，所以刻意做得比每日的更大更久：
+   * 七顆星星依序點亮、三倍的紙屑、更長的號角、天天展翼起飛。
+   */
+  function showWeekCelebrate() {
+    var name = (Store.state.child.nickname || '').trim();
+    $('#week-bonus').textContent = Store.WEEKLY_BONUS;
+    $('#week-sub').textContent = name
+      ? withName('{n}這個禮拜每天都做到了！', name)
+      : '這個禮拜每天都做到了！';
+
+    // 七顆星代表七天，一顆一顆亮起來，把這一刻拉長
+    var stars = $('#week-stars');
+    stars.textContent = '';
+    for (var i = 0; i < 7; i++) {
+      var st = svgIcon('star4', 'week-star');
+      st.style.animationDelay = (0.25 + i * 0.22) + 's';
+      stars.appendChild(st);
+    }
+
+    $('#week-celebrate').hidden = false;
+    confettiRain(200);
+    setTimeout(function () { confettiRain(120); }, 1400);   // 第二波，讓紙屑一直落
+    play('week');
+    buzz([40, 80, 40, 80, 40, 80, 200]);
+    speak((name ? withName('{n}好棒！', name) : '') + '這個禮拜每天都做到了！', 900);
   }
 
   // ── 特別獎勵 ────────────────────────────────────────────
@@ -1045,7 +1089,19 @@
       paws += s.done;
       if (s.perfect) perfect++;
     });
-    $('#week-note').textContent = '本週集到 ' + paws + ' 個爪印 🐾　全部完成 ' + perfect + ' 天';
+    // 七顆點代表七天，一眼看到這週集滿沒有
+    var dots = $('#week-dots');
+    dots.textContent = '';
+    Store.weekMarks(start).forEach(function (ok, i) {
+      var d = el('span', 'week-dot' + (ok ? ' is-on' : ''), DOW[days[i].getDay()]);
+      dots.appendChild(d);
+    });
+    var full = Store.isWeekPerfect(start);
+    if (full) dots.appendChild(el('span', 'week-dot__medal', '🏅'));
+
+    $('#week-note').textContent = full
+      ? ('本週全勤！集到 ' + paws + ' 個爪印 🐾　額外 +' + Store.WEEKLY_BONUS)
+      : ('本週集到 ' + paws + ' 個爪印 🐾　全部完成 ' + perfect + ' 天，還差 ' + (7 - perfect) + ' 天全勤');
 
     var pts = Store.totalPoints();
     $('#stat-paw').textContent = pts.balance;
@@ -1418,6 +1474,11 @@
     $('#celebrate-close').addEventListener('click', function () { $('#celebrate').hidden = true; });
     $('#celebrate').addEventListener('click', function (e) {
       if (e.target === $('#celebrate')) $('#celebrate').hidden = true;
+    });
+
+    $('#week-close').addEventListener('click', function () { $('#week-celebrate').hidden = true; });
+    $('#week-celebrate').addEventListener('click', function (e) {
+      if (e.target === $('#week-celebrate')) $('#week-celebrate').hidden = true;
     });
 
     $('#backfill-date').addEventListener('change', renderBackfill);
