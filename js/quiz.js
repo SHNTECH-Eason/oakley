@@ -24,8 +24,11 @@
   //   爪印 = 習慣的貨幣，靠每天做該做的事和家長給獎累積
   //   金幣 = 本事的貨幣，靠實力闖關累積
   // 分開之後就不用擔心闖關賺太快把作息表稀釋掉，關卡也不必限制一天幾關。
-  var COINS_PER_STAGE = 10;
-  var COINS_PER_TIER = 50;     // 每打完一個階段（10 關）的額外獎勵
+  //
+  // 每關的金幣＝所在場景的編號（草原 1、森林 2⋯⋯太空 5）。
+  // 一開始就給固定 10 顆的話，後面越難的關反而沒有變得更值錢，
+  // 少了「往前闖比較划算」的理由。
+  var COINS_PER_TIER_BONUS = 5;   // 打完一整個場景（10 關）的額外獎勵
 
   // 每個階段一個場景，關卡往前推進就像走過一趟旅程：
   // 草地 → 森林 → 海邊 → 天空 → 太空
@@ -129,13 +132,17 @@
     TOTAL: TOTAL,
     STAGES: STAGES,
     PER_TIER: PER_TIER,
-    COINS_PER_STAGE: COINS_PER_STAGE,
-    COINS_PER_TIER: COINS_PER_TIER,
+    COINS_PER_TIER_BONUS: COINS_PER_TIER_BONUS,
 
-    /** 通過 n 關總共值多少金幣（每滿一個階段有額外獎勵） */
+    /** 這一關過了給幾個金幣＝所在場景的編號 */
+    coinsOf: function (stage) { return tierOf(stage); },
+
+    /** 通過 n 關總共值多少金幣（每打完一個場景有額外獎勵） */
     coinsFor: function (cleared) {
-      var n = Math.max(0, cleared);
-      return n * COINS_PER_STAGE + Math.floor(n / PER_TIER) * COINS_PER_TIER;
+      var n = Math.max(0, Math.min(STAGES, cleared));
+      var total = 0;
+      for (var s = 1; s <= n; s++) total += tierOf(s);
+      return total + Math.floor(n / PER_TIER) * COINS_PER_TIER_BONUS;
     },
 
     /** 把毫秒念成「1 分 20 秒」 */

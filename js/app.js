@@ -707,7 +707,7 @@
     $('#quest-note').textContent = all
       ? '五十關全部通關了！可以重玩任何一關'
       : (Quiz.tierInfo(stage).place + '・' + Quiz.tierInfo(stage).name +
-         '　十題全對就過關，每過一關 +' + Quiz.COINS_PER_STAGE + ' 金幣');
+         '　十題全對就過關，這裡每過一關 +' + Quiz.coinsOf(stage) + ' 金幣');
 
     renderMap();
     setTimeout(scrollToCurrentStage, 50);
@@ -969,7 +969,7 @@
       up.hidden = false;
     } else if (outcome && outcome.tierDone) {
       up.textContent = '🚩 打完「' + Quiz.tierInfo(stage).place + '」！額外 +' +
-                       Quiz.COINS_PER_TIER + ' 金幣';
+                       Quiz.COINS_PER_TIER_BONUS + ' 金幣';
       up.hidden = false;
     } else if (outcome && outcome.advanced) {
       up.textContent = '⭐ 解鎖第 ' + outcome.stage + ' 關　今天已過 ' +
@@ -1071,8 +1071,9 @@
     $('#cfg-stage').value = String(Math.min(Quiz.STAGES, stage));
     $('#cfg-level-hint').textContent =
       '共 ' + Quiz.STAGES + ' 關，目前第 ' + stage + ' 關（' + Quiz.tierInfo(stage).name +
-      '）。十題全對才過關，每過一關 +' + Quiz.COINS_PER_STAGE +
-      ' 金幣，關卡數不限。太簡單或太難可以直接跳關。';
+      '）。十題全對才過關，關卡數不限。每關的金幣＝所在場景編號（草原 1 到太空 5），' +
+      '打完一整個場景額外 +' + Quiz.COINS_PER_TIER_BONUS +
+      '。太簡單或太難可以直接跳關。';
     if (!$('#backfill-date').value) $('#backfill-date').value = Store.dateKey(Store.today());
 
     readVersion();
