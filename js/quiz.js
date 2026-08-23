@@ -19,13 +19,14 @@
   var TOTAL = 10;              // 每關題數
   var STAGES = 50;
   var PER_TIER = 10;
-  var DAILY_ADVANCE = 3;       // 一天最多前進幾關
 
-  // 分數壓在「一天作息全破」（8 + 5 = 13）附近。
-  // 作息表才是主線，闖關是加分的娛樂，不該反過來蓋過它。
+  // 想闖幾關就闖幾關，不擋。但爪印一天有上限 ——
+  // 爪印是全 App 共用的貨幣，如果闖關可以無限賺，作息表就變得沒份量了。
+  // 上限訂在 14，跟一天作息全破（8 + 5 = 13）差不多。
+  // 超過之後關卡照樣往前推進，只是不再給爪印：往前走本身就是獎勵。
   var SHOW_UP_POINTS = 2;      // 當天第一次挑戰就給，答錯也算
   var CLEAR_POINTS = 4;        // 每過一關
-  // 一天上限 = 2 + 4 × 3 = 14
+  var DAILY_POINT_CAP = 14;
 
   var TIERS = [
     { name: '10 以內加法',    desc: '3 + 4',   color: 'amber'   },
@@ -127,9 +128,9 @@
     TOTAL: TOTAL,
     STAGES: STAGES,
     PER_TIER: PER_TIER,
-    DAILY_ADVANCE: DAILY_ADVANCE,
     SHOW_UP_POINTS: SHOW_UP_POINTS,
     CLEAR_POINTS: CLEAR_POINTS,
+    DAILY_POINT_CAP: DAILY_POINT_CAP,
     TIERS: TIERS,
     tierOf: tierOf,
     tierInfo: tierInfo,

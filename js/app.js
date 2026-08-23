@@ -702,11 +702,11 @@
     var all = stage > Quiz.STAGES;
 
     $('#stat-stage').textContent = all ? '🏆' : String(stage);
-    $('#stat-today').textContent = Store.clearedToday() + '/' + Quiz.DAILY_ADVANCE;
+    $('#stat-today').textContent = String(Store.clearedToday());
     $('#stat-qpaw').textContent = Store.quizPoints();
     $('#quest-note').textContent = all
       ? '五十關全部通關了！可以重玩任何一關'
-      : (Quiz.tierInfo(stage).name + '　十題全對就過關，每天最多前進 ' + Quiz.DAILY_ADVANCE + ' 關');
+      : (Quiz.tierInfo(stage).name + '　十題全對就過關，想闖幾關都可以');
 
     renderMap();
     setTimeout(scrollToCurrentStage, 50);
@@ -740,9 +740,7 @@
       row.setAttribute('data-side', sides[(s - 1) % sides.length]);
 
       var state = s < current ? 'done' : (s === current ? 'now' : 'locked');
-      var capped = state === 'now' && !Store.canAdvance();
-      var node = el('button', 'map__node map__node--' + state + (capped ? ' map__node--capped' : ''),
-        String(s));
+      var node = el('button', 'map__node map__node--' + state, String(s));
       node.setAttribute('data-color', Quiz.tierInfo(s).color);
       node.setAttribute('data-stage', String(s));
       if (state === 'now') node.id = 'map-current';
@@ -770,10 +768,6 @@
 
     if (stage > current) { toast('先通過前面的關卡'); return; }
     if (stage < current) { startStage(stage, true); return; }      // 重玩，不計獎勵
-    if (!Store.canAdvance()) {
-      toast('今天已經前進 ' + Quiz.DAILY_ADVANCE + ' 關了，明天再繼續！');
-      return;
-    }
     startStage(stage, false);
   }
 
@@ -821,17 +815,8 @@
     $('#quiz-mark').className = 'quiz__mark';
     renderQuizDots(quizState.i);
 
-    // 第一階段給爪印圖示當數數的鷹架，五歲還沒辦法純抽象心算
-    var aid = $('#quiz-aid');
-    aid.textContent = '';
-    if (Quiz.tierOf(quizState.stage) === 1) {
-      [q.a, q.b].forEach(function (n, idx) {
-        if (idx) aid.appendChild(el('span', null, q.op));
-        var g = el('span', 'quiz__aid-group');
-        for (var k = 0; k < n; k++) g.appendChild(svgIcon('paw'));
-        aid.appendChild(g);
-      });
-    }
+    // 這裡原本會畫出對應數量的爪印當數數的鷹架，後來拿掉了：
+    // 能數就不會算，那反而讓他繞過心算，變成在練數數而不是練加減。
 
     var box = $('#quiz-options');
     box.textContent = '';
@@ -892,7 +877,9 @@
     $('#quiz-score').textContent = correct + ' / ' + Quiz.TOTAL;
     $('#quiz-reward').textContent = replay
       ? '重玩不計獎勵'
-      : (outcome.gained ? '+' + outcome.gained + ' 🐾' : '這次沒有爪印，但有來就很棒');
+      : (outcome.gained ? '+' + outcome.gained + ' 🐾'
+        : (outcome.cappedOut ? '今天的爪印拿滿了，但可以繼續往前闖！'
+          : '這次沒有爪印，但有來就很棒'));
 
     // 沒過關就把「再試一次」放出來，直接重來不用回地圖再點一次
     $('#quiz-retry').hidden = passed;
@@ -902,14 +889,11 @@
       up.textContent = '🏆 五十關全部通關！';
       up.hidden = false;
     } else if (outcome && outcome.advanced) {
-      up.textContent = '⭐ 解鎖第 ' + outcome.stage + ' 關　今天已前進 ' +
-                       outcome.clearedToday + '/' + Quiz.DAILY_ADVANCE + ' 關';
+      up.textContent = '⭐ 解鎖第 ' + outcome.stage + ' 關　今天已過 ' +
+                       outcome.clearedToday + ' 關';
       up.hidden = false;
     } else if (passed && replay) {
       up.textContent = '重玩全對，厲害！';
-      up.hidden = false;
-    } else if (passed && outcome && !outcome.advanced) {
-      up.textContent = '今天已經前進 ' + Quiz.DAILY_ADVANCE + ' 關了，明天再繼續';
       up.hidden = false;
     } else {
       up.hidden = true;
@@ -1004,8 +988,8 @@
     $('#cfg-stage').value = String(Math.min(Quiz.STAGES, stage));
     $('#cfg-level-hint').textContent =
       '共 ' + Quiz.STAGES + ' 關，目前第 ' + stage + ' 關（' + Quiz.tierInfo(stage).name +
-      '）。十題全對才過關，每天最多前進 ' + Quiz.DAILY_ADVANCE +
-      ' 關。太簡單或太難可以直接跳關。';
+      '）。十題全對才過關，關卡數不限，但爪印一天最多 ' + Quiz.DAILY_POINT_CAP +
+      ' 個。太簡單或太難可以直接跳關。';
     if (!$('#backfill-date').value) $('#backfill-date').value = Store.dateKey(Store.today());
 
     readVersion();

@@ -376,17 +376,17 @@
     return Math.min(Quiz.STAGES, Math.max(1, state.settings.quizStage || 1));
   }
 
-  /** 今天還能不能往前推進（全部通關之後就只剩重玩） */
+  /** 還有沒有關卡可以往前推進（全部通關之後就只剩重玩） */
   function canAdvance() {
-    return clearedToday() < Quiz.DAILY_ADVANCE && quizStage() <= Quiz.STAGES;
+    return quizStage() <= Quiz.STAGES;
   }
 
   /**
    * 記錄一次挑戰。
    *
-   * 全對才過關。沒過可以立刻重來，所以不會被卡一整天；
-   * 但每天最多前進三關，有節制才有得期待。
-   * 爪印只在當天第一次挑戰給，重試不再給 —— 獎勵的是「有來挑戰」。
+   * 全對才過關。沒過可以立刻重來，所以不會被卡一整天，關卡也不限一天幾關。
+   * 但爪印一天有上限：爪印是全 App 共用的貨幣，闖關能無限賺的話
+   * 作息表就沒份量了。到頂之後照樣能往前推進，只是不再給爪印。
    */
   function recordQuizAttempt(stage, correct, total) {
     var key = dateKey(today());
@@ -395,20 +395,22 @@
     if (!Array.isArray(rec.cleared)) rec.cleared = [];
 
     var passed = correct >= total;
+    var earned = rec.points || 0;
+    var room = Math.max(0, Quiz.DAILY_POINT_CAP - earned);
     var gained = 0;
 
     rec.attempts = (rec.attempts || 0) + 1;
-    if (rec.attempts === 1) gained += Quiz.SHOW_UP_POINTS;
+    if (rec.attempts === 1) gained += Math.min(room, Quiz.SHOW_UP_POINTS);
 
     var advanced = false;
     if (passed && stage === quizStage() && canAdvance()) {
       rec.cleared.push(stage);
       s.quizStage = stage + 1;
-      gained += Quiz.CLEAR_POINTS;
+      gained += Math.min(Math.max(0, room - gained), Quiz.CLEAR_POINTS);
       advanced = true;
     }
 
-    rec.points = (rec.points || 0) + gained;
+    rec.points = earned + gained;
     rec.at = new Date().toISOString();
     state.quizzes[key] = rec;
 
@@ -419,6 +421,7 @@
     return {
       passed: passed, advanced: advanced, gained: gained,
       stage: quizStage(), clearedToday: rec.cleared.length,
+      cappedOut: rec.points >= Quiz.DAILY_POINT_CAP,
       allDone: quizStage() > Quiz.STAGES
     };
   }

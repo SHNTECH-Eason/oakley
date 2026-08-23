@@ -602,7 +602,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
 }
 
 .map__node--locked { background: #f1f5f9; border-color: #e2e8f0; color: #cbd5e1; }
-.map__node--capped { border-color: var(--gold); color: var(--gold); animation: none; }
 
 .map__done-all {
   margin-top: 18px;
@@ -634,10 +633,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
   color: var(--ink);
   line-height: 1.2;
 }
-.quiz__aid { display: flex; flex-wrap: wrap; gap: 14px; justify-content: center; min-height: 0; }
-.quiz__aid-group { display: flex; gap: 3px; }
-.quiz__aid-group svg { width: 20px; height: 20px; fill: #a78bfa; }
-
 .quiz__options {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
