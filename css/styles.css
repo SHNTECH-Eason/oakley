@@ -548,18 +548,25 @@ button { font: inherit; color: inherit; cursor: pointer; }
   flex-direction: column;
   align-items: center;
 }
-.map__section[data-scene="meadow"] { background: linear-gradient(180deg, #dcfce7 0%, #bbf7d0 100%); }
-.map__section[data-scene="forest"] { background: linear-gradient(180deg, #bbf7d0 0%, #86efac 100%); }
-.map__section[data-scene="beach"]  { background: linear-gradient(180deg, #cffafe 0%, #fde68a 100%); }
-.map__section[data-scene="sky"]    { background: linear-gradient(180deg, #dbeafe 0%, #bfdbfe 100%); }
-.map__section[data-scene="space"]  { background: linear-gradient(180deg, #1e1b4b 0%, #312e81 100%); }
+.map__section[data-scene="meadow"] { background: linear-gradient(180deg, #7DD3FC 0%, #BAE6FD 34%, #DCFCE7 100%); }
+.map__section[data-scene="forest"] { background: linear-gradient(180deg, #A7F3D0 0%, #6EE7B7 40%, #34D399 100%); }
+.map__section[data-scene="beach"]  { background: linear-gradient(180deg, #7DD3FC 0%, #BAE6FD 45%, #FEF3C7 100%); }
+.map__section[data-scene="sky"]    { background: linear-gradient(180deg, #60A5FA 0%, #93C5FD 45%, #DBEAFE 100%); }
+.map__section[data-scene="space"]  { background: linear-gradient(180deg, #0F172A 0%, #1E1B4B 50%, #312E81 100%); }
 .map__section[data-scene="space"] .map__num { color: #fff; }
-.map__section.is-locked { filter: grayscale(.85) opacity(.62); }
+.map__section.is-locked { filter: grayscale(.9) opacity(.55); }
 
 /* 場景裝飾：純點綴，不能擋到節點 */
-.map__scenery { position: absolute; inset: 0; pointer-events: none; }
-.map__deco { position: absolute; opacity: .55; }
-.map__section[data-scene="space"] .map__deco { opacity: .8; }
+.map__scenery { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.map__deco { position: absolute; opacity: .9; filter: drop-shadow(0 2px 3px rgba(0,0,0,.12)); }
+
+/* 場景地面壓在區塊最底部 */
+.map__ground {
+  position: absolute;
+  left: 0; right: 0; bottom: 0;
+  width: 100%;
+  height: 92px;
+}
 
 .map__tier {
   position: relative;

@@ -718,17 +718,32 @@
    * 裝飾物的位置寫死在這裡（圖示、左%、上%、大小 px），
    * 全部是 SVG 自己畫的，沒有外部圖檔 —— 離線照樣顯示，也不用擔心授權。
    */
+  // [圖示, 左%, 上%, 大小px]。刻意讓數量夠多、尺寸夠大，
+  // 第一版只放四個半透明小圖，結果看起來只是「有顏色的背景」而已。
   var SCENERY = {
-    meadow: [['tree', 4, 14, 34], ['tree', 85, 32, 26], ['cloud', 66, 4, 32], ['tree', 12, 64, 28]],
-    forest: [['tree', 2, 8, 42], ['tree', 87, 24, 36], ['tree', 8, 54, 34], ['tree', 80, 72, 30]],
-    beach:  [['cloud', 6, 6, 36], ['cloud', 72, 28, 30], ['star4', 88, 64, 18]],
-    sky:    [['cloud', 2, 10, 42], ['cloud', 76, 36, 34], ['cloud', 14, 68, 30], ['cloud', 68, 86, 26]],
-    space:  [['star4', 6, 8, 20], ['star4', 86, 22, 26], ['star4', 16, 50, 16],
-             ['star4', 78, 72, 22], ['star4', 40, 90, 14]]
+    meadow: [['sun', 78, 2, 54], ['cloud', 8, 4, 46],
+             ['tree', 3, 15, 56], ['tree', 84, 20, 46], ['tree', 10, 38, 44],
+             ['tree', 88, 46, 52], ['tree', 4, 62, 50], ['tree', 80, 72, 44],
+             ['tree', 14, 84, 40], ['cloud', 62, 34, 40]],
+    forest: [['tree', 1, 6, 62], ['tree', 86, 12, 56], ['tree', 8, 24, 50],
+             ['tree', 90, 34, 48], ['tree', 2, 44, 58], ['tree', 84, 54, 54],
+             ['tree', 10, 66, 46], ['tree', 88, 76, 50], ['tree', 3, 86, 52],
+             ['cloud', 40, 2, 40]],
+    beach:  [['sun', 82, 3, 52], ['cloud', 10, 6, 44], ['cloud', 60, 16, 38],
+             ['shell', 6, 30, 34], ['shell', 88, 44, 30], ['shell', 12, 58, 32],
+             ['shell', 84, 70, 34], ['shell', 8, 84, 28], ['cloud', 30, 40, 36]],
+    sky:    [['cloud', 2, 8, 58], ['cloud', 76, 18, 50], ['cloud', 12, 30, 46],
+             ['cloud', 82, 42, 54], ['cloud', 4, 54, 50], ['cloud', 74, 64, 44],
+             ['cloud', 16, 76, 48], ['cloud', 80, 88, 40], ['sun', 44, 2, 44]],
+    space:  [['planet', 80, 6, 58], ['star4', 8, 4, 26], ['star4', 30, 14, 18],
+             ['star4', 88, 26, 22], ['star4', 6, 32, 20], ['star4', 62, 40, 16],
+             ['planet', 10, 50, 46], ['star4', 86, 56, 24], ['star4', 20, 66, 18],
+             ['star4', 70, 76, 22], ['star4', 4, 84, 26], ['star4', 50, 92, 16]]
   };
 
   function sceneryFor(scene) {
     var box = el('div', 'map__scenery');
+
     (SCENERY[scene] || []).forEach(function (d) {
       var g = svgIcon(d[0], 'map__deco');
       g.style.left = d[1] + '%';
@@ -737,6 +752,13 @@
       g.style.height = d[3] + 'px';
       box.appendChild(g);
     });
+
+    // 場景地面固定在區塊底部，橫向拉滿
+    var ground = svgIcon('ground-' + scene, 'map__ground');
+    ground.setAttribute('viewBox', '0 0 400 120');
+    ground.setAttribute('preserveAspectRatio', 'none');
+    box.appendChild(ground);
+
     return box;
   }
 
