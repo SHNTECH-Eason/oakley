@@ -322,7 +322,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
   overflow: hidden;
 }
 
-/* 從蓋章處噴出的爪印與彩色紙屑：先往上噴，再被重力拉下來 */
+/* 從蓋章處噴出的掌印與彩色紙屑：先往上噴，再被重力拉下來 */
 .fx-piece {
   position: absolute;
   will-change: transform, opacity;
@@ -546,7 +546,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 }
 .quiz__level { font-size: .74rem; font-weight: 900; color: #7c3aed; flex-shrink: 0; }
 
-/* 十顆爪印代表十題 */
+/* 十顆掌印代表十題 */
 .quiz__dots { flex: 1; display: flex; gap: 4px; justify-content: center; }
 .quiz__dots i {
   width: 13px; height: 13px;
@@ -569,7 +569,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 }
 .quiz__panel[hidden] { display: none; }
 /* ── 闖關地圖 ─────────────────────────────────────────────
-   50 關的蜿蜒路徑。節點左右交錯，中間用小爪印當足跡，
+   50 關的蜿蜒路徑。節點左右交錯，中間用小掌印當足跡，
    不用畫 SVG 路徑也讀得出是一條路。                        */
 
 .map {

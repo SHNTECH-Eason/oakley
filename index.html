@@ -254,7 +254,7 @@
 <section class="view" id="view-reward">
   <div class="reward-head">
     <div class="reward-head__title" data-zy="特別獎勵"></div>
-    <p class="reward-head__sub">作息表以外的好表現，可以在這裡多給爪印。點一下選理由，確認後才會給出去。</p>
+    <p class="reward-head__sub">作息表以外的好表現，可以在這裡多給掌印。點一下選理由，確認後才會給出去。</p>
   </div>
   <ul class="rewards" id="reward-list"></ul>
   <div class="reward-log">
@@ -277,7 +277,7 @@
   <div class="stats stats--week">
     <div class="stat stat--paw">
       <div class="stat__num" id="stat-paw">0</div>
-      <div class="stat__label" data-zy="總爪印"></div>
+      <div class="stat__label" data-zy="總掌印"></div>
     </div>
     <div class="stat stat--fire">
       <div class="stat__num" id="stat-streak">0</div>
@@ -341,7 +341,7 @@
       <summary class="card__head">設定</summary>
       <div class="card__body">
         <label class="field-row">小朋友暱稱<input type="text" id="cfg-nick" class="field" maxlength="12"></label>
-        <label class="field-row">每完成一項給幾個爪印<input type="number" id="cfg-per" class="field field--num" min="1" max="99"></label>
+        <label class="field-row">每完成一項給幾個掌印<input type="number" id="cfg-per" class="field field--num" min="1" max="99"></label>
         <label class="field-row">當天全部完成加碼<input type="number" id="cfg-bonus" class="field field--num" min="0" max="99"></label>
         <label class="field-row">數學闖關進度（第幾關）<input type="number" id="cfg-stage" class="field field--num" min="1" max="50"></label>
         <label class="field-row">一天最多前進幾關<input type="number" id="cfg-daily" class="field field--num" min="0" max="20"></label>
@@ -372,7 +372,7 @@
           <button class="btn btn--ghost" id="sync-share-blank">分享空白連結</button>
         </div>
 
-        <p class="card__desc" style="margin-top:14px">在這台裝置輸入另一台的配對碼，就會加入同一份紀錄（兩邊的紀錄會合併，不會有人的爪印不見）：</p>
+        <p class="card__desc" style="margin-top:14px">在這台裝置輸入另一台的配對碼，就會加入同一份紀錄（兩邊的紀錄會合併，不會有人的掌印不見）：</p>
         <input type="text" id="sync-input" class="field" placeholder="ABCD-EFGH-JKMN-PQRS"
                autocapitalize="characters" autocorrect="off" autocomplete="off" spellcheck="false">
         <div class="row">
@@ -466,7 +466,7 @@
     <div class="modal__icon" id="give-icon">🎁</div>
     <div class="modal__title">要給這個獎勵嗎？</div>
     <label class="field-row">理由<input type="text" id="give-reason" class="field" maxlength="20"></label>
-    <label class="field-row">爪印<input type="number" id="give-points" class="field field--num" min="1" max="99"></label>
+    <label class="field-row">掌印<input type="number" id="give-points" class="field field--num" min="1" max="99"></label>
     <div class="row row--end">
       <button class="btn btn--ghost" id="give-cancel">取消</button>
       <button class="btn btn--primary" id="give-ok">⭐ 給獎勵</button>

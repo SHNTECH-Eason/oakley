@@ -235,7 +235,7 @@
     setTimeout(function () { node.remove(); }, ms);
   }
 
-  /** 蓋章瞬間：擴散圓環 + 爪印與紙屑往上噴再落下。count 隨進度加大 */
+  /** 蓋章瞬間：擴散圓環 + 掌印與紙屑往上噴再落下。count 隨進度加大 */
   function stampBurst(anchor, color, count) {
     if (reduceMotion()) return;
     var n = count || 16;
@@ -356,7 +356,7 @@
   var lastTopKind = null;
 
   /**
-   * 頂部的數字跟著分頁走：闖關那頁看金幣，其他頁看爪印。
+   * 頂部的數字跟著分頁走：闖關那頁看金幣，其他頁看掌印。
    * 兩種貨幣各自代表不同的事，在哪一頁就看哪一個才不會混淆。
    */
   function renderTop() {
@@ -371,7 +371,7 @@
     $('#top-icon').setAttribute('href', onQuest ? '#i-coin' : '#i-paw');
     $('#paw-total').classList.toggle('paw-total--coin', onQuest);
     $('#paw-count').textContent = value;
-    $('#paw-total').setAttribute('aria-label', (onQuest ? '金幣 ' : '爪印 ') + value);
+    $('#paw-total').setAttribute('aria-label', (onQuest ? '金幣 ' : '掌印 ') + value);
 
     // 只有同一種貨幣的數字真的變動才彈跳，單純換分頁不算
     if (lastTopKind === kind && lastPawCount !== null && value !== lastPawCount) {
@@ -503,7 +503,7 @@
    * 點一下作息項目。
    *
    * 已完成再點「不會取消」，只會再放一次慶祝。
-   * 五歲小孩會因為好玩再戳一次自己剛蓋的章，不能讓他親手把爪印刪掉。
+   * 五歲小孩會因為好玩再戳一次自己剛蓋的章，不能讓他親手把掌印刪掉。
    * 真的要取消請走家長模式的補登。
    */
   function onTaskTap(task, btn) {
@@ -664,7 +664,7 @@
       var li = el('li');
       var btn = el('button', 'reward');
       btn.setAttribute('data-color', r.color);
-      btn.setAttribute('aria-label', r.label + '，' + r.points + ' 個爪印');
+      btn.setAttribute('aria-label', r.label + '，' + r.points + ' 個掌印');
 
       btn.appendChild(svgIcon(r.icon, 'reward__icon'));
 
@@ -704,7 +704,7 @@
       var del = el('button', 'reward-log__del', '✕');
       del.title = '收回這個獎勵';
       del.addEventListener('click', function () {
-        if (!confirm('收回「' + b.reason + '」的 ' + b.points + ' 個爪印？')) return;
+        if (!confirm('收回「' + b.reason + '」的 ' + b.points + ' 個掌印？')) return;
         Store.removeBonus(b.id);
         renderRewardLog();
         renderTop();
@@ -741,8 +741,8 @@
     buzz([30, 60, 30, 60, 120]);
 
     var name = (Store.state.child.nickname || '').trim();
-    var praise = name ? withName('{n}好棒！' + reason + '，加 ' + points + ' 個爪印！', name)
-                      : (reason + '，加 ' + points + ' 個爪印！');
+    var praise = name ? withName('{n}好棒！' + reason + '，加 ' + points + ' 個掌印！', name)
+                      : (reason + '，加 ' + points + ' 個掌印！');
     toast('🎁 ' + reason + '　+' + points + ' 🐾');
     speak(praise, 300);
     showBuddy(reason.length > 6 ? '好棒！' : reason + '，好棒！', true);
@@ -957,7 +957,7 @@
     $('#quiz-mark').className = 'quiz__mark';
     renderQuizDots(quizState.i);
 
-    // 這裡原本會畫出對應數量的爪印當數數的鷹架，後來拿掉了：
+    // 這裡原本會畫出對應數量的掌印當數數的鷹架，後來拿掉了：
     // 能數就不會算，那反而讓他繞過心算，變成在練數數而不是練加減。
 
     var box = $('#quiz-options');
@@ -1133,8 +1133,8 @@
     if (full) dots.appendChild(el('span', 'week-dot__medal', '🏅'));
 
     $('#week-note').textContent = full
-      ? ('本週全勤！集到 ' + paws + ' 個爪印 🐾　額外 +' + Store.WEEKLY_BONUS)
-      : ('本週集到 ' + paws + ' 個爪印 🐾　全部完成 ' + perfect + ' 天，還差 ' + (7 - perfect) + ' 天全勤');
+      ? ('本週全勤！集到 ' + paws + ' 個掌印 🐾　額外 +' + Store.WEEKLY_BONUS)
+      : ('本週集到 ' + paws + ' 個掌印 🐾　全部完成 ' + perfect + ' 天，還差 ' + (7 - perfect) + ' 天全勤');
 
     var pts = Store.totalPoints();
     $('#stat-paw').textContent = pts.balance;
@@ -1254,7 +1254,7 @@
     var del = el('button', 'editor__del', '✕');
     del.title = '刪除這個項目';
     del.addEventListener('click', function () {
-      if (confirm('刪除「' + task.label + '」？\n已經蓋過的爪印會保留。')) li.remove();
+      if (confirm('刪除「' + task.label + '」？\n已經蓋過的掌印會保留。')) li.remove();
     });
     li.appendChild(del);
 
@@ -1334,11 +1334,11 @@
       }
     });
 
-    // 手動輸入配對碼＝配對「自己的另一台裝置」，所以走合併，兩邊的爪印都留著
+    // 手動輸入配對碼＝配對「自己的另一台裝置」，所以走合併，兩邊的掌印都留著
     $('#sync-join').addEventListener('click', function () {
       var code = $('#sync-input').value.trim();
       if (!code) { toast('請先輸入配對碼'); return; }
-      if (!confirm('要加入這組配對碼嗎？\n\n兩邊的紀錄會合併（不會有人的爪印不見），\n但作息項目與設定會改成對方那一份。')) return;
+      if (!confirm('要加入這組配對碼嗎？\n\n兩邊的紀錄會合併（不會有人的掌印不見），\n但作息項目與設定會改成對方那一份。')) return;
 
       $('#sync-join').disabled = true;
       Sync.join(code, { mergeLocal: true }).then(function (joined) {
@@ -1404,7 +1404,7 @@
       // 這台已經在用了，預設不把自己的紀錄推過去，免得污染對方的資料
       $('#invite-text').textContent =
         '加入之後，這台會顯示對方的作息表與紀錄，兩邊即時同步。' +
-        '這台目前有 ' + days + ' 天紀錄、' + paws + ' 個爪印，預設不會併過去 —— ' +
+        '這台目前有 ' + days + ' 天紀錄、' + paws + ' 個掌印，預設不會併過去 —— ' +
         '原本那份還留在雲端，等一下畫面上會顯示舊的配對碼，隨時可以回去。';
       $('#invite-merge-row').hidden = false;
     } else {
