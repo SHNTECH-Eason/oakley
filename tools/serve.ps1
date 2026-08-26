@@ -28,8 +28,11 @@ $MIME = @{
     '.gif'  = 'image/gif'
     '.svg'  = 'image/svg+xml'
     '.ico'  = 'image/x-icon'
+    '.webp' = 'image/webp'
     '.pdf'  = 'application/pdf'
     '.woff2'= 'font/woff2'
+    '.mp4'  = 'video/mp4'
+    '.webm' = 'video/webm'
 }
 
 $listener = New-Object System.Net.HttpListener

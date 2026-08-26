@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="zh-TW">
+<meta charset="utf-8">
+<title>frame extract</title>
+<!--
+  Green screen video  ->  transparent WebP sprite sheet, entirely in the browser.
+  This machine has no ffmpeg; everything here is <video> + canvas.
+
+  Both assets/skye-*.webp and assets/marshall-*.webp were cut with this.
+
+    1. start the dev server:  tools/serve.ps1
+    2. drop the clip in _tmp/ and open  http://localhost:8080/tools/sprite-extract.html
+    3. drive it from the console — every call returns a promise:
+
+         await T.load('../_tmp/clip.mp4')     // -> { w, h, duration }
+         await T.sheet({ cols: 6, rows: 6 })  // contact sheet, to find the segments
+         await T.probeBg(5)                   // is the background actually green?
+         await T.preview({ t: 2.5 })          // one keyed frame on a checkerboard
+         await T.bounds({ from: 1.85, to: 3.1, fps: 12 })
+         await T.build({ from: 1.85, to: 3.1, fps: 12, cellW: 132, cellH: 218,
+                         minArea: 20000, name: 'x.webp', q: 0.8 })
+         await T.resave('x.webp', 'image/webp', 0.7)   // re-encode, no re-decode
+
+  Everything lands in _tmp/ via the dev server's POST /__save.
+
+  Two things that are easy to get wrong:
+    - the union crop box (T.bounds) must cover every frame, or the character
+      changes size from cell to cell
+    - a play-once animation needs steps(n - 1), not steps(n) — see styles.css
+-->
+<body style="background:#1b1b1b;color:#ddd;font:13px ui-monospace,monospace;padding:12px">
+<pre id="log">idle</pre>
+<div id="out"></div>
+
+<script>
+(function () {
+  'use strict';
+
+  var logEl = document.getElementById('log');
+  function log(m) { logEl.textContent += '\n' + m; }
+
+  var T = window.T = {};
+
+  // ── loading ───────────────────────────────────────────────
+  // fetch into a Blob first: the dev server has no Range support,
+  // and <video> seeking against a plain 200 response is unreliable.
+  T.load = async function (url) {
+    var blob = await (await fetch(url)).blob();
+    blob = blob.slice(0, blob.size, 'video/mp4');   // don't trust the dev server's content-type
+    var v = document.createElement('video');
+    v.muted = true; v.playsInline = true; v.preload = 'auto';
+    v.src = URL.createObjectURL(blob);
+    await new Promise(function (ok, bad) {
+      v.onloadedmetadata = ok;
+      v.onerror = function () { bad(new Error('video decode failed')); };
+    });
+    T.video = v;
+    T.W = v.videoWidth; T.H = v.videoHeight;
+    T.cv = document.createElement('canvas');
+    T.cv.width = T.W; T.cv.height = T.H;
+    T.cx = T.cv.getContext('2d', { willReadFrequently: true });
+    await T.seek(0);
+    log('loaded ' + T.W + 'x' + T.H + '  ' + v.duration.toFixed(2) + 's');
+    return { w: T.W, h: T.H, duration: v.duration };
+  };
+
+  T.seek = function (t) {
+    var v = T.video;
+    return new Promise(function (ok) {
+      var done = function () { v.removeEventListener('seeked', done); ok(); };
+      v.addEventListener('seeked', done);
+      v.currentTime = Math.max(0, Math.min(t, v.duration - 0.001));
+    });
+  };
+
+  /** raw ImageData of the frame at time t */
+  T.frame = async function (t) {
+    await T.seek(t);
+    T.cx.clearRect(0, 0, T.W, T.H);
+    T.cx.drawImage(T.video, 0, 0);
+    return T.cx.getImageData(0, 0, T.W, T.H);
+  };
+
+  // ── saving ────────────────────────────────────────────────
+  T.save = function (canvas, name, type, q) {
+    return new Promise(function (ok) {
+      canvas.toBlob(function (b) {
+        fetch('/__save?name=' + encodeURIComponent(name), { method: 'POST', body: b })
+          .then(function (r) { return r.text(); })
+          .then(function (txt) { log(txt + '  ' + Math.round(b.size / 1024) + 'KB'); ok({ name: name, kb: Math.round(b.size / 1024) }); });
+      }, type || 'image/png', q);
+    });
+  };
+
+  // ── contact sheet: what is actually in this video ─────────
+  T.sheet = async function (o) {
+    o = o || {};
+    var from = o.from || 0, to = o.to == null ? T.video.duration : o.to;
+    var cols = o.cols || 6, rows = o.rows || 5, cw = o.cw || 170;
+    var n = cols * rows, ch = Math.round(cw * T.H / T.W), lab = 14;
+    var c = document.createElement('canvas');
+    c.width = cols * cw; c.height = rows * (ch + lab);
+    var x = c.getContext('2d');
+    x.fillStyle = '#101010'; x.fillRect(0, 0, c.width, c.height);
+    for (var i = 0; i < n; i++) {
+      var t = from + (to - from) * i / (n - 1);
+      await T.seek(t);
+      var px = (i % cols) * cw, py = Math.floor(i / cols) * (ch + lab);
+      x.drawImage(T.video, px, py, cw, ch);
+      x.fillStyle = '#4ade80'; x.font = '11px monospace';
+      x.fillText('#' + i + '  ' + t.toFixed(2) + 's', px + 3, py + ch + 11);
+    }
+    return T.save(c, o.name || 'sheet.png', 'image/png');
+  };
+
+  // ── what colour is the background? ────────────────────────
+  T.probeBg = async function (t) {
+    var d = (await T.frame(t == null ? T.video.duration / 2 : t)).data;
+    var pts = { tl: [4, 4], tr: [T.W - 5, 4], bl: [4, T.H - 5], br: [T.W - 5, T.H - 5], mid: [T.W >> 1, 4] };
+    var out = {};
+    Object.keys(pts).forEach(function (k) {
+      var i = (pts[k][1] * T.W + pts[k][0]) * 4;
+      out[k] = [d[i], d[i + 1], d[i + 2], d[i + 3]];
+    });
+    // greenness histogram over the whole frame
+    var hist = new Array(16).fill(0);
+    for (var p = 0; p < d.length; p += 4) {
+      var g = d[p + 1] - Math.max(d[p], d[p + 2]);
+      var b = Math.max(0, Math.min(15, Math.floor((g + 40) / 20)));
+      hist[b]++;
+    }
+    out.greennessHist = hist.map(function (v, i) { return { from: i * 20 - 40, n: v }; }).filter(function (h) { return h.n > 0; });
+    return out;
+  };
+
+  // ── chroma key ────────────────────────────────────────────
+  /**
+   * Two greenness measures, and a pixel has to survive BOTH to be kept.
+   * Neither one alone is enough on this footage:
+   *
+   *   difference  G - max(R,B)   fails on the ground shadow. Halving the
+   *                              brightness of green also halves the
+   *                              difference, so the shadow lands in the
+   *                              feather band and survives as a grey smudge.
+   *
+   *   ratio       G / max(R,B)   is brightness invariant so it kills the
+   *                              shadow, but fails on the right third of the
+   *                              frame, where a lamp washes the screen out to
+   *                              (81,130,73) — ratio 1.6, well under any
+   *                              threshold that leaves the character alone.
+   *
+   * The two failures do not overlap: the washed-out screen still has a large
+   * absolute difference, and the shadow still has a large ratio. Taking the
+   * lower of the two alphas removes both and leaves Marshall (red, white,
+   * black, blue, yellow — nothing above ratio ~1.0) untouched.
+   */
+  T.key = function (img, o) {
+    o = o || {};
+    var loG = o.loG == null ? 20 : o.loG;     // difference: at or below, opaque
+    var hiG = o.hiG == null ? 45 : o.hiG;     // difference: at or above, transparent
+    var loR = o.loR == null ? 1.35 : o.loR;   // ratio: at or below, opaque
+    var hiR = o.hiR == null ? 1.75 : o.hiR;   // ratio: at or above, transparent
+    var floor = o.floor == null ? 12 : o.floor;   // below this the ratio is just noise
+    var d = img.data;
+    for (var i = 0; i < d.length; i += 4) {
+      var r = d[i], g = d[i + 1], b = d[i + 2];
+      var m = r > b ? r : b;
+      var gr = g - m;
+
+      var a = 255;
+      if (gr >= hiG) a = 0;
+      else if (gr > loG) a = Math.round(255 * (hiG - gr) / (hiG - loG));
+
+      if (a > 0 && gr >= floor) {
+        var ratio = g / (m + 1);
+        var ar = ratio >= hiR ? 0
+               : ratio <= loR ? 255
+               : Math.round(255 * (hiR - ratio) / (hiR - loR));
+        if (ar < a) a = ar;
+      }
+
+      if (a === 0) { d[i] = d[i + 1] = d[i + 2] = 0; d[i + 3] = 0; continue; }
+      // despill: pull the green fringe back down towards the other channels
+      if (gr > 0) d[i + 1] = m + gr * (a / 255) * 0.25;
+      d[i + 3] = a;
+    }
+    return img;
+  };
+
+  /**
+   * Drop opaque blobs smaller than minArea.
+   *
+   * The green screen has small pale sparkles drifting across it. They are not
+   * green, so no chroma key will touch them — but they blow the crop box out
+   * to the full frame and would float around the character in the sprite.
+   * Size is what separates them from the character and the water jets.
+   */
+  T.despeckle = function (img, minArea, minA) {
+    minArea = minArea || 600;
+    minA = minA || 24;
+    var d = img.data, w = img.width, h = img.height, n = w * h;
+    var seen = new Uint8Array(n);
+    var stack = new Int32Array(n);
+    var comp = new Int32Array(n);
+    var kept = [], dropped = [];
+
+    for (var s = 0; s < n; s++) {
+      if (seen[s] || d[s * 4 + 3] < minA) continue;
+      var sp = 0, cn = 0;
+      stack[sp++] = s; seen[s] = 1;
+      while (sp) {
+        var p = stack[--sp];
+        comp[cn++] = p;
+        var px = p % w, py = (p / w) | 0;
+        for (var k = 0; k < 4; k++) {
+          var nx = px + (k === 0 ? -1 : k === 1 ? 1 : 0);
+          var ny = py + (k === 2 ? -1 : k === 3 ? 1 : 0);
+          if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+          var q = ny * w + nx;
+          if (seen[q] || d[q * 4 + 3] < minA) continue;
+          seen[q] = 1; stack[sp++] = q;
+        }
+      }
+      if (cn < minArea) {
+        dropped.push(cn);
+        for (var c = 0; c < cn; c++) {
+          var o4 = comp[c] * 4;
+          d[o4] = d[o4 + 1] = d[o4 + 2] = d[o4 + 3] = 0;
+        }
+      } else kept.push(cn);
+    }
+    img.__blobs = { kept: kept.sort(function (a, b) { return b - a; }), dropped: dropped.length, droppedMax: Math.max.apply(null, dropped.concat([0])) };
+    return img;
+  };
+
+  /** bounding box of pixels with alpha above a threshold */
+  T.bbox = function (img, minA) {
+    minA = minA || 24;
+    var d = img.data, w = img.width, h = img.height;
+    var x0 = w, y0 = h, x1 = -1, y1 = -1;
+    for (var y = 0; y < h; y++) {
+      for (var x = 0; x < w; x++) {
+        if (d[(y * w + x) * 4 + 3] >= minA) {
+          if (x < x0) x0 = x;
+          if (x > x1) x1 = x;
+          if (y < y0) y0 = y;
+          if (y > y1) y1 = y;
+        }
+      }
+    }
+    return x1 < 0 ? null : { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 };
+  };
+
+  /** key + despeckle in one step, so bounds and build always agree */
+  T.clean = function (img, o) {
+    o = o || {};
+    T.key(img, o);
+    if (o.minArea !== 0) T.despeckle(img, o.minArea, o.minA);
+    return img;
+  };
+
+  /** union bbox over a sampled range — one crop for every frame, so the
+      character does not jump size from cell to cell */
+  T.bounds = async function (o) {
+    var from = o.from, to = o.to, fps = o.fps || 12;
+    var n = Math.max(1, Math.round((to - from) * fps));
+    var u = null, empty = [];
+    for (var i = 0; i < n; i++) {
+      var t = from + i / fps;
+      var im = T.clean(await T.frame(t), o);
+      var b = T.bbox(im);
+      T.lastBlobs = im.__blobs;
+      if (!b) { empty.push(+t.toFixed(2)); continue; }
+      if (!u) u = b;
+      else {
+        var x1 = Math.max(u.x + u.w, b.x + b.w), y1 = Math.max(u.y + u.h, b.y + b.h);
+        u.x = Math.min(u.x, b.x); u.y = Math.min(u.y, b.y);
+        u.w = x1 - u.x; u.h = y1 - u.y;
+      }
+    }
+    return { box: u, frames: n, emptyAt: empty };
+  };
+
+  // ── sprite sheet ──────────────────────────────────────────
+  T.build = async function (o) {
+    var from = o.from, to = o.to, fps = o.fps || 12, cell = o.cell || 200;
+    var pad = o.pad == null ? 0.04 : o.pad;
+    var n = Math.max(1, Math.round((to - from) * fps));
+    var box = o.box || (await T.bounds(o)).box;
+    var cw = o.cellW || cell, chh = o.cellH || cell;
+
+    // fit the union box inside the cell, keeping aspect
+    var sc = Math.min(cw / (box.w * (1 + pad * 2)), chh / (box.h * (1 + pad * 2)));
+    var dw = box.w * sc, dh = box.h * sc;
+    var ox = (cw - dw) / 2, oy = (chh - dh) / 2;
+    cell = cw;
+
+    var sheet = document.createElement('canvas');
+    sheet.width = cw * n; sheet.height = chh;
+    var sx = sheet.getContext('2d');
+    sx.imageSmoothingQuality = 'high';
+
+    var tmp = document.createElement('canvas');
+    tmp.width = T.W; tmp.height = T.H;
+    var tc = tmp.getContext('2d');
+
+    for (var i = 0; i < n; i++) {
+      var img = T.clean(await T.frame(from + i / fps), o);
+      tc.clearRect(0, 0, T.W, T.H);
+      tc.putImageData(img, 0, 0);
+      sx.drawImage(tmp, box.x, box.y, box.w, box.h, i * cell + ox, oy, dw, dh);
+    }
+
+    T.lastSheet = sheet;
+    var r = await T.save(sheet, o.name || 'sprite.webp', o.type || 'image/webp', o.q == null ? 0.9 : o.q);
+    r.frames = n; r.cellW = cw; r.cellH = chh; r.box = box;
+    r.sheet = sheet.width + 'x' + sheet.height;
+    return r;
+  };
+
+  /** save the sheet again at a different quality/format without re-decoding */
+  T.resave = function (name, type, q) { return T.save(T.lastSheet, name, type, q); };
+
+  /** one frame, keyed, on a checkerboard — for eyeballing the key quality */
+  T.preview = async function (o) {
+    var img = T.clean(await T.frame(o.t), o);
+    var c = document.createElement('canvas');
+    c.width = T.W; c.height = T.H;
+    var x = c.getContext('2d');
+    for (var y = 0; y < T.H; y += 16) for (var xx = 0; xx < T.W; xx += 16) {
+      x.fillStyle = ((xx / 16 + y / 16) % 2) ? '#d0d0d0' : '#808080';
+      x.fillRect(xx, y, 16, 16);
+    }
+    var tmp = document.createElement('canvas');
+    tmp.width = T.W; tmp.height = T.H;
+    tmp.getContext('2d').putImageData(img, 0, 0);
+    x.drawImage(tmp, 0, 0);
+    return T.save(c, o.name || 'key-preview.png', 'image/png');
+  };
+
+  log('T ready — T.load("../_tmp/your-clip.mp4")');
+})();
+</script>
+</body>
+</html>

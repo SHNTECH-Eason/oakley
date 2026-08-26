@@ -298,11 +298,16 @@
   // ── 汪汪隊夥伴 ──────────────────────────────────────────
 
   var buddyTimers = [];
+  var buddyTurn = 0;
 
   /**
-   * 天天從右下角彈出來揮手、眨眼，說一句話再退場。
-   * 動畫是 18 格的精靈圖，用 CSS steps() 播放，不需要影片解碼。
+   * 從右下角彈出來揮手、眨眼，說一句話再退場。
+   * 動畫是精靈圖，用 CSS steps() 播放，不需要影片解碼。
    * pointer-events 是 none，不會擋到任何按鈕。
+   *
+   * 天天和毛毛輪流出場。一天八次、連續幾個月，同一隻狗做同一個動作
+   * 一個禮拜就變成壁紙 —— 換人是成本最低也最有效的變化。
+   * 刻意是輪流不是隨機：兩隻的隨機會連續出現同一隻，看起來像壞掉。
    */
   function showBuddy(text, big) {
     if (reduceMotion()) return;
@@ -319,6 +324,7 @@
     box.hidden = true;
     box.classList.remove('is-leaving');
     box.classList.toggle('buddy--big', !!big);
+    box.classList.toggle('buddy--marshall', (buddyTurn++ % 2) === 1);
     void box.offsetWidth;
     box.hidden = false;
 

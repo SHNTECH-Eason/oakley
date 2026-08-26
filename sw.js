@@ -29,6 +29,8 @@ var PRECACHE = [
   'assets/skye.png',
   'assets/skye-cheer.webp',
   'assets/skye-fly.webp',
+  'assets/marshall-cheer.webp',
+  'assets/marshall-splash.webp',
   'icons/icon-192.png',
   'icons/icon-512.png'
 ];

@@ -1115,14 +1115,25 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .buddy.is-leaving { animation: buddy-out .35s ease-in both; }
 
 /**
- * 天天的動畫是一張 18 格的精靈圖（3600×200，每格正方）。
- * background-size 用 auto 100% 讓每一格剛好等於元素寬度，
- * 位移就能直接用 --cell 的倍數算，換尺寸不用改動畫。
+ * 精靈圖的共用機制。
+ *
+ * background-size 用 auto 100%，把整張圖縮到跟元素一樣高，
+ * 於是每一格畫出來的寬度 = 元素高 × 每格的寬高比。--ar 就是那個比例，
+ * --step 因此等於「一格在畫面上有多寬」，位移直接用它的倍數算。
+ * 換顯示尺寸只要改 --cell，動畫完全不用動。
+ *
+ * 兩種播法：
+ *   sprite-loop  循環，n 格用 steps(n)
+ *   sprite-once  播一次停在最後一格，n 格要用 steps(n - 1)
+ *                —— steps() 預設是 end，用 steps(n) 會在結束的瞬間
+ *                多跳一格，停在圖的外面也就是空白處
  */
 .buddy__art {
-  --cell: 108px;
+  --cell: 108px;               /* 每格顯示的高 */
+  --ar: 1;                     /* 每格的寬 ÷ 高 */
   --frames: 18;
-  width: var(--cell);
+  --step: calc(var(--cell) * var(--ar));
+  width: var(--step);
   height: var(--cell);
   flex-shrink: 0;
   background: url('../assets/skye-cheer.webp') 0 0 / auto 100% no-repeat;
@@ -1131,9 +1142,32 @@ button { font: inherit; color: inherit; cursor: pointer; }
 }
 .buddy--big .buddy__art { --cell: 148px; }
 
-@keyframes cheer {
-  to { background-position-x: calc(var(--cell) * -1 * var(--frames)); }
+@keyframes sprite-loop {
+  to { background-position-x: calc(var(--step) * -1 * var(--frames)); }
 }
+@keyframes sprite-once {
+  to { background-position-x: calc(var(--step) * (1 - var(--frames))); }
+}
+@keyframes cheer {
+  to { background-position-x: calc(var(--step) * -1 * var(--frames)); }
+}
+
+/**
+ * 毛毛：15 格（1980×218，每格 132×218）。
+ *
+ * 天天那張是半身特寫，毛毛這張是站著的全身，所以同樣的高度之下
+ * 毛毛的「臉」會小一大截，看起來就遠了。要讓兩隻在畫面上份量相當，
+ * 得對齊的是頭的大小不是整體的高度 —— 量下來大約是天天的 1.45 倍高。
+ * 寬度反而比天天窄（站姿本來就瘦），留給對話泡泡的空間更多。
+ */
+.buddy--marshall .buddy__art {
+  --cell: 156px;
+  --ar: .6055;
+  --frames: 15;
+  background-image: url('../assets/marshall-cheer.webp');
+  animation: sprite-loop 1.25s steps(15) infinite;
+}
+.buddy--marshall.buddy--big .buddy__art { --cell: 200px; }
 
 .buddy__bubble {
   position: relative;
@@ -1193,13 +1227,16 @@ button { font: inherit; color: inherit; cursor: pointer; }
 }
 
 @media (max-width: 380px) {
-  .buddy__art { --cell: 92px; }
+  /* 選擇器要跟變體一樣重，不然 .buddy--marshall .buddy__art 會蓋過去，
+     變成小螢幕上只有天天縮小、毛毛沒有 */
+  .buddy .buddy__art { --cell: 92px; }
+  .buddy--marshall .buddy__art { --cell: 133px; }
   .buddy__bubble { font-size: .88rem; max-width: 42vw; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  /* 停在第一格，還是看得到天天，只是不動 */
-  .buddy__art { animation: none; }
+  /* 停在第一格，還是看得到狗狗，只是不動 */
+  .buddy .buddy__art { animation: none; }
 }
 
 .version-badge {
@@ -1277,23 +1314,63 @@ button { font: inherit; color: inherit; cursor: pointer; }
  * 全部完成時天天展翼起飛 —— 一天只有一次，值得比揮手更大的動作。
  *
  * 起飛只播一次然後停在最後一格（飛行姿勢），再疊一個上下浮動讓她不像定格。
- * 15 格的精靈圖要用 steps(14) 跑到 -14 格：steps 預設是 end，
- * 動畫結束的瞬間會多跳一格，用 15 就會停在空白格上。
+ * 15 格的精靈圖要用 steps(14)：steps 預設是 end，動畫結束的瞬間會多跳一格，
+ * 用 15 就會停在空白格上。sprite-once 已經把這件事算進去了。
  */
 .celebrate__hero {
   --cell: 132px;
+  --frames: 15;
   margin: 0 auto 2px;
   background-image: url('../assets/skye-fly.webp');
-  animation: fly 1.25s steps(14) forwards,
+  animation: sprite-once 1.25s steps(14) forwards,
              hover 2.4s ease-in-out 1.25s infinite;
 }
 
-@keyframes fly {
-  to { background-position-x: calc(var(--cell) * -14); }
-}
 @keyframes hover {
   0%, 100% { transform: translateY(0); }
   50%      { transform: translateY(-9px); }
+}
+
+/**
+ * 整週全勤時毛毛出水柱 —— 一週最多只有一次，所以動作要比每日的起飛更大。
+ *
+ * 12 格（4560×214，每格 380×214），分成兩段接起來：
+ * 前 3 格是把水槍架出來，播一次；後 9 格是噴水，接著無限循環。
+ * 兩個 animation 疊在同一個屬性上，後宣告的那個開始之後就蓋過前面，
+ * 所以水會一直噴下去，不像起飛那樣定格。
+ *
+ * 這一格是 16:9 的橫幅，比天天那張寬得多，所以連盒子一起放寬。
+ * --cell 是高，寬會是它的 1.78 倍，用 clamp 讓小螢幕不會撐破。
+ */
+.celebrate--week .celebrate__box { max-width: 380px; }
+
+.celebrate--week .celebrate__hero {
+  --cell: clamp(118px, 36vw, 182px);
+  --ar: 1.7757;
+  --frames: 12;
+  background-image: url('../assets/marshall-splash.webp');
+  /* 水柱又細又多，陰影下太重整片水會顯得髒 */
+  filter: drop-shadow(0 4px 7px rgba(15, 23, 42, .2));
+  animation: splash-draw .25s steps(3) both,
+             splash-jet .75s steps(9) .25s infinite;
+}
+
+@keyframes splash-draw {
+  from { background-position-x: 0; }
+  to   { background-position-x: calc(var(--step) * -3); }
+}
+@keyframes splash-jet {
+  from { background-position-x: calc(var(--step) * -3); }
+  to   { background-position-x: calc(var(--step) * -12); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* 放在慶祝區塊後面，否則會被上面那兩條同樣重的選擇器蓋掉 */
+  .celebrate .celebrate__hero { animation: none; }
+  /* 停在「做完那件事」的那一格，不動也看得出他在做什麼 —— 第一格
+     是天天還沒起飛、毛毛還沒噴水，定在那裡什麼都沒說明 */
+  .celebrate__hero { background-position-x: calc(var(--step) * -14); }
+  .celebrate--week .celebrate__hero { background-position-x: calc(var(--step) * -7); }
 }
 .celebrate__title { font-size: 1.45rem; font-weight: 900; color: var(--brand-dark); margin-top: 2px; }
 .celebrate__sub { font-size: 1.05rem; color: var(--accent); margin-top: 4px; }
