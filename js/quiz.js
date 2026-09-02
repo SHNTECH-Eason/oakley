@@ -37,8 +37,8 @@
     { name: '10 以內加法',    desc: '3 + 4',   color: 'amber',   scene: 'meadow', place: '草原' },
     { name: '10 以內加減',    desc: '8 − 3',   color: 'emerald', scene: 'forest', place: '森林' },
     { name: '20 以內加減',    desc: '15 − 7',  color: 'blue',    scene: 'beach',  place: '海邊' },
-    { name: '湊十',           desc: '8 + ? = 10', color: 'purple', scene: 'sky',   place: '天空' },
-    { name: '跨十與兩位數',   desc: '27 + 5',  color: 'night',   scene: 'space',  place: '太空' }
+    { name: '湊十',           desc: '2 + 8 = 10', color: 'purple', scene: 'sky',  place: '天空' },
+    { name: '跨十與兩位數',   desc: '9 + 3',   color: 'night',   scene: 'space',  place: '太空' }
   ];
 
   function rnd(min, max) { return min + Math.floor(Math.random() * (max - min + 1)); }
@@ -90,34 +90,49 @@
    * 也因為只有九個，這一段只給五關，十關同樣的九題會膩。
    */
   function tenPartner(k) {
+    // 先用他最熟的寫法把「哪些配對會滿十」認出來（2 + 8、3 + 7），
+    // 再翻成缺項（8 + ? = 10）—— 那才是湊十法實際用到的方向。
+    // 問法是疊上去的不是換掉的：舊的還會出現，題庫也才夠大。
+    var showSum = k < 3 || (k < 6 && Math.random() < 0.4);
+
+    if (showSum) {
+      // 全部都是十的話，他不用算就知道一律選 10，那變成在練按按鈕。
+      // 所以固定摻進湊不到十的題目 —— 都是第一階就會的加法，
+      // 難的不是算，是要分辨這一題到底滿不滿十。
+      if (Math.random() < 0.65) {
+        var p = rnd(1, 9);
+        return plain(p, '+', 10 - p);
+      }
+      var s = rnd(5, 9);
+      var x = rnd(1, s - 1);
+      return plain(x, '+', s - x);
+    }
+
     var a = rnd(1, 9);
     var miss = 10 - a;
-
-    // 爬升的是問法，不是數字。九個事實遲早都要會，沒有藏起來的道理；
-    // 真正有難易之分的是未知數擺在哪裡。
-    //
+    // 九個事實遲早都要會，沒有藏起來的道理；有難易之分的是未知數擺在哪：
     //   a + ? = 10   目標形式。舉起 8 根手指，沒舉的兩根一眼就看到
     //   ? + a = 10   一樣的算法，但未知數在最前面，要多讀一次才知道在問什麼
     //   10 − a = ?   看起來最眼熟，其實對他最貴：用倒數的話 10 − 8 要退八下。
-    //                等他真的記住夥伴了才划算，所以留到最後一關
-    var form = k < 2 ? 0 : (k < 4 ? rnd(0, 1) : rnd(0, 2));
+    //                等他真的記住夥伴了才划算，所以留到最後兩關
+    var form = k < 6 ? 0 : (k < 8 ? rnd(0, 1) : rnd(0, 2));
     if (form === 0) return mk(a + ' + ? = 10', miss, 'near');
     if (form === 1) return mk('? + ' + a + ' = 10', miss, 'near');
     return mk('10 − ' + a + ' = ?', miss, 'near');
   }
 
-  /** 36–40：跨十加法，湊十法的第一個實戰。9 + 3 是 9 湊到 10 再加 2 */
+  /** 41–43：跨十加法，湊十法的第一個實戰。9 + 3 是 9 湊到 10 再加 2 */
   function addOverTen(k) {
-    var lo = k < 2 ? 6 : (k < 4 ? 5 : 4);
-    var top = k < 2 ? 14 : (k < 4 ? 16 : 18);
+    var lo = k < 1 ? 6 : (k < 2 ? 5 : 4);
+    var top = k < 1 ? 14 : (k < 2 ? 16 : 18);
     var a = rnd(lo, 9);
     var b = rnd(11 - a, Math.min(9, top - a));    // 一定進位，且和不超過 top
     return plain(a, '+', b);
   }
 
-  /** 41–45：跨十減法（破十法）。13 − 5 是 13 拆成 10 和 3，10 − 5 = 5，再加 3 */
+  /** 44–46：跨十減法（破十法）。13 − 5 是 13 拆成 10 和 3，10 − 5 = 5，再加 3 */
   function subOverTen(k) {
-    var top = k < 2 ? 14 : (k < 4 ? 16 : 18);
+    var top = k < 1 ? 14 : (k < 2 ? 16 : 18);
     var a = rnd(11, top);
     var u = a % 10;                                // top ≤ 18，所以 u 不會是 9
     var b = rnd(u + 1, 9);                         // 個位不夠減，一定要退位
@@ -125,9 +140,9 @@
     return mk(a + ' − ' + b + ' = ?', a - b, 'near', Math.abs(u - b));
   }
 
-  /** 46–50：兩位數 ± 一位數，湊十的直接應用。27 + 5 是 27 湊到 30 再加 2 */
+  /** 47–50：兩位數 ± 一位數，湊十的直接應用。27 + 5 是 27 湊到 30 再加 2 */
   function twoDigit(k) {
-    var tensTop = k < 2 ? 4 : (k < 4 ? 6 : 8);
+    var tensTop = k < 1 ? 4 : (k < 2 ? 5 : (k < 3 ? 6 : 8));
     if (Math.random() < 0.5) {
       var u = rnd(2, 9);
       var a = rnd(1, tensTop) * 10 + u;
@@ -159,8 +174,10 @@
       if (Math.random() < 0.5) { a = rnd(5, 15); return plain(a, '+', rnd(2, 20 - a)); }
       a = rnd(11, 20); return plain(a, '−', rnd(2, a - 1));
     }
-    if (tier === 4) return k < 5 ? tenPartner(k) : addOverTen(k - 5);
-    return k < 5 ? subOverTen(k) : twoDigit(k - 5);
+    // 一個場景一個主題，十關跑完才換 —— 場景換了就是換一件事
+    if (tier === 4) return tenPartner(k);                       // 天空：湊十
+    if (k < 3) return addOverTen(k);                            // 太空：湊十拿來用
+    return k < 6 ? subOverTen(k - 3) : twoDigit(k - 6);
   }
 
   /**
