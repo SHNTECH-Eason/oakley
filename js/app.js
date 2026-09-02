@@ -958,7 +958,9 @@
 
   function showQuestion() {
     var q = quizState.set[quizState.i];
-    $('#quiz-question').textContent = q.a + ' ' + q.op + ' ' + q.b + ' = ?';
+    // 題目的寫法由 quiz.js 決定 —— 湊十那階是「8 + ? = 10」，
+    // 未知數不一定在等號後面，這裡不該假設題目長什麼樣子
+    $('#quiz-question').textContent = q.text;
     $('#quiz-mark').textContent = '';
     $('#quiz-mark').className = 'quiz__mark';
     renderQuizDots(quizState.i);

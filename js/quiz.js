@@ -4,7 +4,8 @@
  * 50 關的路徑地圖，十題全對才能解鎖下一關。設計上幾個刻意的決定：
  *
  * 1. 難度沿路爬升，從 10 以內的加法開始。五歲直接算兩位數進位會挫折，
- *    而挫折會把整個 App「我好棒」的情緒基調弄壞。
+ *    而挫折會把整個 App「我好棒」的情緒基調弄壞。難度的定義見下面
+ *    「出題」那一段 —— 看的是要數幾下，不是數字多大。
  * 2. 全對才過關 —— 要證明真的會了，不是矇對。但沒過可以立刻重來，
  *    題目會重新出，不會被卡一整天。
  * 3. 每天最多前進三關。有節制才有得期待，也避免一個下午把 50 關刷完。
@@ -36,8 +37,8 @@
     { name: '10 以內加法',    desc: '3 + 4',   color: 'amber',   scene: 'meadow', place: '草原' },
     { name: '10 以內加減',    desc: '8 − 3',   color: 'emerald', scene: 'forest', place: '森林' },
     { name: '20 以內加減',    desc: '15 − 7',  color: 'blue',    scene: 'beach',  place: '海邊' },
-    { name: '兩位數不進位',   desc: '23 + 15', color: 'purple',  scene: 'sky',    place: '天空' },
-    { name: '兩位數進位借位', desc: '27 + 18', color: 'night',   scene: 'space',  place: '太空' }
+    { name: '湊十',           desc: '8 + ? = 10', color: 'purple', scene: 'sky',   place: '天空' },
+    { name: '跨十與兩位數',   desc: '27 + 5',  color: 'night',   scene: 'space',  place: '太空' }
   ];
 
   function rnd(min, max) { return min + Math.floor(Math.random() * (max - min + 1)); }
@@ -53,51 +54,128 @@
   }
 
   // ── 出題 ──────────────────────────────────────────────────
+  //
+  // 難度不是看數字多大，是看「要數幾下」。
+  //
+  // 五歲的策略是加法取大數往上數、減法取被減數往下數，十根手指就是上限：
+  //   15 + 3   往上數 3 下     做得到
+  //   8 + 5    往上數 5 下     做得到，跨過十也不影響，只是慢
+  //   15 − 13  往下數 13 下    做不到
+  //   27 + 45  往上數 45 下    做不到
+  // 所以 27 + 45 對他不是「難」，是他手上的方法根本執行不到 —— 那種失敗
+  // 跟「想很久算錯」不一樣，它會直接讓他覺得我不會。
+  //
+  // 第 31 關開始因此改成鋪湊十：先把十的夥伴變成反射，再拿它處理跨十，
+  // 最後才碰兩位數。兩位數加兩位數（27 + 45）需要直式計算，那是小二的
+  // 方法不是難度，留到他真的走完再開第二張地圖。
+  //
+  // 每個階段裡面也會爬（用關卡在該階段的序位 k），不再是十關同一種。
+
+  function mk(text, answer, mode, trap) {
+    return { text: text, answer: answer, options: makeOptions(answer, mode, trap) };
+  }
+
+  function plain(a, op, b, mode) {
+    return mk(a + ' ' + op + ' ' + b + ' = ?', op === '+' ? a + b : a - b, mode || 'near');
+  }
+
+  /**
+   * 31–35：十的夥伴，用缺項的形式問。
+   *
+   * 用湊十法算 8 + 5 的時候，腦子裡問的是「8 還差幾個才滿十」，
+   * 那句話的形狀是 8 + ? = 10，不是 8 + 2 = ?。同一個事實反過來問
+   * 就要重新學一次，所以這裡練的必須是缺項那個方向。
+   *
+   * 整個題庫只有九個事實，重複是刻意的 —— 這種東西就是要背到反射。
+   * 也因為只有九個，這一段只給五關，十關同樣的九題會膩。
+   */
+  function tenPartner(k) {
+    var a = rnd(1, 9);
+    var miss = 10 - a;
+
+    // 爬升的是問法，不是數字。九個事實遲早都要會，沒有藏起來的道理；
+    // 真正有難易之分的是未知數擺在哪裡。
+    //
+    //   a + ? = 10   目標形式。舉起 8 根手指，沒舉的兩根一眼就看到
+    //   ? + a = 10   一樣的算法，但未知數在最前面，要多讀一次才知道在問什麼
+    //   10 − a = ?   看起來最眼熟，其實對他最貴：用倒數的話 10 − 8 要退八下。
+    //                等他真的記住夥伴了才划算，所以留到最後一關
+    var form = k < 2 ? 0 : (k < 4 ? rnd(0, 1) : rnd(0, 2));
+    if (form === 0) return mk(a + ' + ? = 10', miss, 'near');
+    if (form === 1) return mk('? + ' + a + ' = 10', miss, 'near');
+    return mk('10 − ' + a + ' = ?', miss, 'near');
+  }
+
+  /** 36–40：跨十加法，湊十法的第一個實戰。9 + 3 是 9 湊到 10 再加 2 */
+  function addOverTen(k) {
+    var lo = k < 2 ? 6 : (k < 4 ? 5 : 4);
+    var top = k < 2 ? 14 : (k < 4 ? 16 : 18);
+    var a = rnd(lo, 9);
+    var b = rnd(11 - a, Math.min(9, top - a));    // 一定進位，且和不超過 top
+    return plain(a, '+', b);
+  }
+
+  /** 41–45：跨十減法（破十法）。13 − 5 是 13 拆成 10 和 3，10 − 5 = 5，再加 3 */
+  function subOverTen(k) {
+    var top = k < 2 ? 14 : (k < 4 ? 16 : 18);
+    var a = rnd(11, top);
+    var u = a % 10;                                // top ≤ 18，所以 u 不會是 9
+    var b = rnd(u + 1, 9);                         // 個位不夠減，一定要退位
+    // 「小的減大的、反過來算」是這裡最常見的錯：13 − 5 答成 2
+    return mk(a + ' − ' + b + ' = ?', a - b, 'near', Math.abs(u - b));
+  }
+
+  /** 46–50：兩位數 ± 一位數，湊十的直接應用。27 + 5 是 27 湊到 30 再加 2 */
+  function twoDigit(k) {
+    var tensTop = k < 2 ? 4 : (k < 4 ? 6 : 8);
+    if (Math.random() < 0.5) {
+      var u = rnd(2, 9);
+      var a = rnd(1, tensTop) * 10 + u;
+      return plain(a, '+', rnd(10 - u, 9), 'carry');   // 個位一定進位
+    }
+    var u2 = rnd(0, 7);
+    var a2 = rnd(2, tensTop + 1) * 10 + u2;
+    var b2 = rnd(u2 + 1, 9);                           // 個位一定退位
+    // 個位反過來減、十位原封不動：32 − 6 答成 34
+    return mk(a2 + ' − ' + b2 + ' = ?', a2 - b2, 'carry',
+              Math.floor(a2 / 10) * 10 + Math.abs(u2 - b2));
+  }
 
   /** 減法一律保證結果不是負數 —— 五歲還沒有負數的概念 */
   function makeQuestion(stage) {
     var tier = tierOf(stage);
-    var a, b, op;
+    var k = (stage - 1) % PER_TIER;      // 這一關在所屬階段裡的序位 0–9
+    var a, b;
 
     if (tier === 1) {
-      a = rnd(1, 8); b = rnd(1, 9 - a); op = '+';
-    } else if (tier === 2) {
-      if (Math.random() < 0.5) { a = rnd(1, 8); b = rnd(1, 9 - a); op = '+'; }
-      else { a = rnd(3, 10); b = rnd(1, a - 1); op = '−'; }
-    } else if (tier === 3) {
-      // 被減數從 11 起跳，不然常常出到「6 − 1」這種上一階就會的題目
-      if (Math.random() < 0.5) { a = rnd(5, 15); b = rnd(2, 20 - a); op = '+'; }
-      else { a = rnd(11, 20); b = rnd(2, a - 1); op = '−'; }
-    } else if (tier === 4) {
-      // 個位不進位、十位不超過 9
-      var A = rnd(1, 4), B = rnd(1, 9 - A);
-      var a1 = rnd(0, 8), b1 = rnd(0, 9 - a1);
-      if (Math.random() < 0.5) { a = A * 10 + a1; b = B * 10 + b1; op = '+'; }
-      else { a = (A + B) * 10 + (a1 + b1); b = B * 10 + b1; op = '−'; }
-    } else {
-      // 個位一定進位／借位
-      if (Math.random() < 0.5) {
-        var c1 = rnd(2, 9), d1 = rnd(10 - c1, 9);
-        a = rnd(1, 4) * 10 + c1; b = rnd(1, 4) * 10 + d1; op = '+';
-      } else {
-        var e1 = rnd(0, 7), f1 = rnd(e1 + 1, 9);
-        var eT = rnd(2, 9), fT = rnd(1, eT - 1);
-        a = eT * 10 + e1; b = fT * 10 + f1; op = '−';
-      }
+      a = rnd(1, 8); return plain(a, '+', rnd(1, 9 - a));
     }
-
-    var ans = op === '+' ? a + b : a - b;
-    return { a: a, b: b, op: op, answer: ans, options: makeOptions(ans, tier) };
+    if (tier === 2) {
+      if (Math.random() < 0.5) { a = rnd(1, 8); return plain(a, '+', rnd(1, 9 - a)); }
+      a = rnd(3, 10); return plain(a, '−', rnd(1, a - 1));
+    }
+    if (tier === 3) {
+      // 被減數從 11 起跳，不然常常出到「6 − 1」這種上一階就會的題目
+      if (Math.random() < 0.5) { a = rnd(5, 15); return plain(a, '+', rnd(2, 20 - a)); }
+      a = rnd(11, 20); return plain(a, '−', rnd(2, a - 1));
+    }
+    if (tier === 4) return k < 5 ? tenPartner(k) : addOverTen(k - 5);
+    return k < 5 ? subOverTen(k) : twoDigit(k - 5);
   }
 
   /**
    * 錯誤選項要貼近正確答案，不能是亂數。
    * 亂數選項一眼就能排除，等於沒在算；貼近的才逼他真的算一次。
+   *
+   * carry 那組的 ±9、±10 是給兩位數用的陷阱：忘記進位剛好差 10，
+   * 而那個答案就在選項裡等他。trap 是該題型特有的典型錯誤。
    */
-  function makeOptions(ans, tier) {
-    var offsets = tier >= 4 ? [-10, -2, -1, 1, 2, 10, 9, -9] : [-3, -2, -1, 1, 2, 3];
+  function makeOptions(ans, mode, trap) {
+    var offsets = mode === 'carry' ? [-10, -2, -1, 1, 2, 10, 9, -9] : [-3, -2, -1, 1, 2, 3];
     var opts = [ans];
     var guard = 0;
+
+    if (trap != null && trap >= 0 && trap !== ans) opts.push(trap);
 
     while (opts.length < 4 && guard++ < 60) {
       var o = ans + offsets[Math.floor(Math.random() * offsets.length)];
@@ -119,9 +197,8 @@
     var list = [], seen = {}, guard = 0;
     while (list.length < TOTAL && guard++ < 400) {
       var q = makeQuestion(stage);
-      var sig = q.a + q.op + q.b;
-      if (seen[sig]) continue;          // 同一關不要出重複的題目
-      seen[sig] = true;
+      if (seen[q.text]) continue;       // 同一關不要出重複的題目
+      seen[q.text] = true;
       list.push(q);
     }
     while (list.length < TOTAL) list.push(makeQuestion(stage));
