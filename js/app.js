@@ -530,7 +530,10 @@
 
     var stats = Store.dayStats(day);
     var level = stats.total ? stats.done / stats.total : 0;
-    var rare = Math.random() < 0.33;             // 約每三次一次的驚喜，避免變成壁紙
+    // 驚喜的機率。原本是 0.33（約每三次一次），後來往上調三成變成 0.43，
+    // 大約每七次會有三次。刻意還是留在一半以下 —— 天天出現的東西就不特別了，
+    // 這個效果存在的理由本來就是「不是每次都有」。
+    var rare = Math.random() < 0.43;
 
     btn.classList.add('is-stamping');
     setTimeout(function () { btn.classList.remove('is-stamping'); }, 700);
