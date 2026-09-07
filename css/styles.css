@@ -609,6 +609,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .map__section[data-scene="beach"]  { background: linear-gradient(180deg, #7DD3FC 0%, #BAE6FD 45%, #FEF3C7 100%); }
 .map__section[data-scene="sky"]    { background: linear-gradient(180deg, #60A5FA 0%, #93C5FD 45%, #DBEAFE 100%); }
 .map__section[data-scene="space"]  { background: linear-gradient(180deg, #0F172A 0%, #1E1B4B 50%, #312E81 100%); }
+.map__section[data-scene="snow"]   { background: linear-gradient(180deg, #7DD3FC 0%, #BAE6FD 45%, #E0F2FE 100%); }
+.map__section[data-scene="rainbow"]{ background: linear-gradient(180deg, #FBCFE8 0%, #DDD6FE 45%, #BFDBFE 100%); }
+.map__section[data-scene="castle"] { background: linear-gradient(180deg, #F97316 0%, #FBBF24 45%, #FEF3C7 100%); }
 .map__section[data-scene="space"] .map__num { color: #fff; }
 .map__section.is-locked { filter: grayscale(.9) opacity(.55); }
 

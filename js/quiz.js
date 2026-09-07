@@ -1,7 +1,7 @@
 /**
  * 數學闖關
  *
- * 50 關的路徑地圖，十題全對才能解鎖下一關。設計上幾個刻意的決定：
+ * 80 關的路徑地圖，十題全對才能解鎖下一關。設計上幾個刻意的決定：
  *
  * 1. 難度沿路爬升，從 10 以內的加法開始。五歲直接算兩位數進位會挫折，
  *    而挫折會把整個 App「我好棒」的情緒基調弄壞。難度的定義見下面
@@ -18,7 +18,7 @@
   'use strict';
 
   var TOTAL = 10;              // 每關題數
-  var STAGES = 50;
+  var STAGES = 80;
   var PER_TIER = 10;
 
   // 闖關給的是「金幣」，不是掌印。兩種貨幣刻意分開：
@@ -32,13 +32,21 @@
   var COINS_PER_TIER_BONUS = 5;   // 打完一整個場景（10 關）的額外獎勵
 
   // 每個階段一個場景，關卡往前推進就像走過一趟旅程：
-  // 草地 → 森林 → 海邊 → 天空 → 太空
+  // 草地 → 森林 → 海邊 → 天空 → 太空 → 雪地 → 彩虹 → 城堡
+  //
+  // 第 51 關之後刻意不再加深難度。這個年紀要養的是「喜歡」和「對數字有感覺」，
+  // 不是算得更大 —— 所以後面三個場景的數字大小跟第 41–50 關同一個範圍，
+  // 換的是看事情的角度：不見的數字可以在任何位置、三個數要先找出好算的那對、
+  // 雙數是可以直接記住的錨。難度平的時候，變化要來自別的地方。
   var TIERS = [
     { name: '10 以內加法',    desc: '3 + 4',   color: 'amber',   scene: 'meadow', place: '草原' },
     { name: '10 以內加減',    desc: '8 − 3',   color: 'emerald', scene: 'forest', place: '森林' },
     { name: '20 以內加減',    desc: '15 − 7',  color: 'blue',    scene: 'beach',  place: '海邊' },
     { name: '湊十',           desc: '2 + 8 = 10', color: 'purple', scene: 'sky',  place: '天空' },
-    { name: '跨十與兩位數',   desc: '9 + 3',   color: 'night',   scene: 'space',  place: '太空' }
+    { name: '跨十與兩位數',   desc: '9 + 3',   color: 'night',   scene: 'space',  place: '太空' },
+    { name: '找出不見的數字', desc: '9 + ? = 15', color: 'teal',  scene: 'snow',   place: '雪地' },
+    { name: '三個數',         desc: '7 + 3 + 5', color: 'rose',   scene: 'rainbow', place: '彩虹' },
+    { name: '雙數與湊二十',   desc: '7 + 7',   color: 'orange',  scene: 'castle', place: '城堡' }
   ];
 
   function rnd(min, max) { return min + Math.floor(Math.random() * (max - min + 1)); }
@@ -173,6 +181,80 @@
               Math.floor(a2 / 10) * 10 + Math.abs(u2 - b2));
   }
 
+  /**
+   * 51–60：缺項到處跑。數字大小完全不變，變的是「不見的那個數在哪裡」。
+   *
+   * 不是要他算得更難，是要他知道 9 + 6 = 15 這件事可以從任何一角問起。
+   * 那是數感，不是計算 —— 他在湊十那十關已經做過一次（8 + ? = 10），
+   * 這裡把同一個動作攤到所有數字上。
+   *
+   * 和固定在 11–18，跟第 41–46 關同一個範圍；答案永遠是個位數或那個和，
+   * 不管問哪一角，要數的次數都跟前面差不多。
+   */
+  function missingSpot(k) {
+    // 先決定「不見的那個數」，因為要數幾下就是它 —— 四種問法都一樣。
+    // 反過來先抽兩個加數的話，和要夠大就會把答案一起推大，成本失控。
+    var h = rnd(2, 8);
+    var o = rnd(Math.max(2, 8 - h), 9);
+    var c = h + o;
+    // 未知數先待在最熟的位置，再慢慢挪到別處
+    var form = k < 4 ? 0 : (k < 7 ? rnd(0, 1) : rnd(0, 3));
+    if (form === 0) return mk(o + ' + ? = ' + c, h, 'near');
+    if (form === 1) return mk('? + ' + o + ' = ' + c, h, 'near');
+    if (form === 2) return mk(c + ' − ? = ' + o, h, 'near');
+    return mk('? − ' + h + ' = ' + o, c, 'near');
+  }
+
+  /**
+   * 61–70：三個數相加。每一步都很小，難的不是算，是要看出「先做哪兩個」。
+   *
+   * 7 + 3 + 5 從左往右一路數要數八下，先湊十再加五只要五下。
+   * 一半的題目刻意藏一組湊成十的配對，而且位置會換 —— 他得先掃過三個數
+   * 找出好算的那對，這正是數感的正題。
+   */
+  function threeTerms(k) {
+    var top = k < 4 ? 12 : (k < 7 ? 16 : 20);
+
+    if (Math.random() < 0.5) {
+      var p = rnd(1, 9);
+      var third = rnd(1, Math.min(9, top - 10));
+      var t = [p, 10 - p, third];
+      var order = rnd(0, 2);
+      if (order === 1) t = [p, third, 10 - p];
+      if (order === 2) t = [third, p, 10 - p];
+      return mk(t.join(' + ') + ' = ?', 10 + third, 'near');
+    }
+
+    var a = rnd(1, 6), b = rnd(1, 6);
+    // 上限要跟 9 取小 —— 少了這個，top 放寬到 20 時第三項會冒出兩位數
+    var c = rnd(1, Math.min(9, Math.max(1, top - a - b)));
+    return mk(a + ' + ' + b + ' + ' + c + ' = ?', a + b + c, 'near');
+  }
+
+  /**
+   * 71–80：雙數與湊二十。數字大小還是沒變，換的是可以抓住的錨。
+   *
+   * 雙數（6+6、7+7）小朋友記得特別快 —— 兩邊一樣多，用手指一比就對稱。
+   * 記住之後 7 + 8 就變成「雙數再加一」，不用重新算。
+   * 最後三關把湊十的想法搬到下一個整十（14 + ? = 20），收在一個他認得的形狀上。
+   */
+  function doublesAndTwenty(k) {
+    var pick = k < 2 ? 0 : (k < 6 ? rnd(0, 1) : rnd(0, 2));
+
+    if (pick === 0) {
+      var d = rnd(2, 10);
+      return plain(d, '+', d);
+    }
+    if (pick === 1) {
+      var e = rnd(3, 9);
+      return Math.random() < 0.5 ? plain(e, '+', e + 1) : plain(e + 1, '+', e);
+    }
+    var a = rnd(11, 18);
+    return Math.random() < 0.5
+      ? mk(a + ' + ? = 20', 20 - a, 'near')
+      : plain(20, '−', rnd(2, 9));
+  }
+
   /** 減法一律保證結果不是負數 —— 五歲還沒有負數的概念 */
   function makeQuestion(stage) {
     var tier = tierOf(stage);
@@ -193,6 +275,10 @@
     }
     // 一個場景一個主題，十關跑完才換 —— 場景換了就是換一件事
     if (tier === 4) return tenPartner(k);                       // 天空：湊十
+    if (tier === 6) return missingSpot(k);                      // 雪地：缺項到處跑
+    if (tier === 7) return threeTerms(k);                       // 彩虹：三個數
+    if (tier === 8) return doublesAndTwenty(k);                 // 城堡：雙數與湊二十
+
     if (k < 3) return addOverTen(k);                            // 太空：湊十拿來用
     return k < 6 ? subOverTen(k - 3) : twoDigit(k - 6);
   }
