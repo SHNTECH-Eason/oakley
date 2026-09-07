@@ -12,7 +12,7 @@
  *
  * 改動這個號碼會做三件事：舊快取被清掉、檔案重新下載、裝置跳出更新提示。
  */
-var VERSION = '1.4';
+var VERSION = '1.5';
 var CACHE = 'oakley-routine-v' + VERSION;
 
 var PRECACHE = [
