@@ -1230,10 +1230,13 @@ button { font: inherit; color: inherit; cursor: pointer; }
 }
 
 @media (max-width: 380px) {
-  /* 選擇器要跟變體一樣重，不然 .buddy--marshall .buddy__art 會蓋過去，
-     變成小螢幕上只有天天縮小、毛毛沒有 */
-  .buddy .buddy__art { --cell: 92px; }
-  .buddy--marshall .buddy__art { --cell: 133px; }
+  /* 這裡每一條都要跟外面對應的那條一樣重，而且順序要一致 —— 否則會蓋錯人。
+     只寫 .buddy__art 的話 .buddy--marshall .buddy__art 會贏，變成小螢幕上
+     只有天天縮小；漏掉 --big 那兩條的話，驚喜時刻的放大在小螢幕上會失效。 */
+  .buddy .buddy__art                    { --cell: 92px; }
+  .buddy.buddy--big .buddy__art         { --cell: 126px; }
+  .buddy--marshall .buddy__art          { --cell: 133px; }
+  .buddy--marshall.buddy--big .buddy__art { --cell: 170px; }
   .buddy__bubble { font-size: .88rem; max-width: 42vw; }
 }
 
