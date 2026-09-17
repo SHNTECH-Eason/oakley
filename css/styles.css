@@ -35,6 +35,8 @@
 [data-color="indigo"]  { --c: #4f46e5; --c-soft: #eef2ff; --c-line: #a5b4fc; }
 [data-color="night"]   { --c: #3730a3; --c-soft: #e0e7ff; --c-line: #818cf8; }
 [data-color="rose"]    { --c: #e11d48; --c-soft: #fff1f2; --c-line: #fda4af; }
+[data-color="cyan"]    { --c: #0891b2; --c-soft: #ecfeff; --c-line: #67e8f9; }
+[data-color="fuchsia"] { --c: #c026d3; --c-soft: #fdf4ff; --c-line: #f0abfc; }
 
 * { box-sizing: border-box; }
 
@@ -612,7 +614,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .map__section[data-scene="snow"]   { background: linear-gradient(180deg, #7DD3FC 0%, #BAE6FD 45%, #E0F2FE 100%); }
 .map__section[data-scene="rainbow"]{ background: linear-gradient(180deg, #FBCFE8 0%, #DDD6FE 45%, #BFDBFE 100%); }
 .map__section[data-scene="castle"] { background: linear-gradient(180deg, #F97316 0%, #FBBF24 45%, #FEF3C7 100%); }
-.map__section[data-scene="space"] .map__num { color: #fff; }
+.map__section[data-scene="sea"]    { background: linear-gradient(180deg, #0369A1 0%, #0891B2 45%, #22D3EE 100%); }
+.map__section[data-scene="fireworks"] { background: linear-gradient(180deg, #1E1B4B 0%, #4C1D95 50%, #6D28D9 100%); }
+.map__section[data-scene="space"] .map__num,
+.map__section[data-scene="sea"] .map__num,
+.map__section[data-scene="fireworks"] .map__num { color: #fff; }
 .map__section.is-locked { filter: grayscale(.9) opacity(.55); }
 
 /* 場景裝飾：純點綴，不能擋到節點 */
@@ -663,7 +669,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
   opacity: .45;
 }
 .map__trail svg { width: 13px; height: 13px; fill: #78716c; }
-.map__section[data-scene="space"] .map__trail svg { fill: #a5b4fc; }
+.map__section[data-scene="space"] .map__trail svg,
+.map__section[data-scene="sea"] .map__trail svg,
+.map__section[data-scene="fireworks"] .map__trail svg { fill: #a5b4fc; }
 
 .map__node {
   position: relative;

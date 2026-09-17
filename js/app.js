@@ -829,7 +829,16 @@
     castle: [['sun', 78, 3, 54], ['cloud', 6, 8, 46], ['flag', 4, 26, 34],
              ['cloud', 84, 30, 40], ['flag', 90, 44, 32], ['coin', 10, 46, 28],
              ['flag', 6, 62, 34], ['coin', 86, 66, 26], ['cloud', 30, 76, 38],
-             ['flag', 88, 82, 30], ['coin', 14, 88, 24]]
+             ['flag', 88, 82, 30], ['coin', 14, 88, 24]],
+    sea:    [['fish', 4, 8, 44], ['shell', 84, 6, 30], ['fish', 80, 20, 38],
+             ['shell', 8, 26, 26], ['fish', 2, 38, 40], ['shell', 90, 40, 28],
+             ['fish', 86, 54, 36], ['shell', 6, 58, 30], ['fish', 12, 70, 42],
+             ['shell', 88, 74, 26], ['fish', 66, 84, 34], ['shell', 30, 90, 24]],
+    fireworks: [['firework', 6, 4, 52], ['firework', 78, 10, 46], ['star4', 40, 6, 22],
+             ['firework', 2, 26, 44], ['star4', 88, 26, 20], ['firework', 84, 38, 50],
+             ['star4', 26, 40, 18], ['firework', 8, 52, 46], ['star4', 66, 56, 22],
+             ['firework', 82, 66, 42], ['star4', 14, 74, 20], ['firework', 4, 82, 44],
+             ['star4', 50, 88, 18]]
   };
 
   function sceneryFor(scene) {
@@ -1187,7 +1196,8 @@
     $('#cfg-level-hint').textContent =
       '共 ' + Quiz.STAGES + ' 關，目前第 ' + stage + '（' + Quiz.tierInfo(stage).name +
       '），今天已前進 ' + Store.clearedToday() + ' 關。十題全對才過關，' +
-      '每關金幣＝場景編號（草原 1 到城堡 ' + Quiz.TIERS.length + '），打完一整個場景額外 +' +
+      '每關金幣＝場景編號（草原 1 到' + Quiz.TIERS[Quiz.TIERS.length - 1].place +
+      ' ' + Quiz.TIERS.length + '），打完一整個場景額外 +' +
       Quiz.COINS_PER_TIER_BONUS + '。' +
       '「一天最多前進幾關」填 0 表示不限；額度用完仍可重玩已通過的關卡。' +
       '太簡單或太難可以直接跳關。';
