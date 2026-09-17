@@ -47,8 +47,8 @@
     { name: '找出不見的數字', desc: '9 + ? = 15', color: 'teal',  scene: 'snow',   place: '雪地' },
     { name: '不見的數字在前面', desc: '? + 6 = 15', color: 'rose', scene: 'rainbow', place: '彩虹' },
     { name: '三個數',         desc: '7 + 3 + 5', color: 'orange', scene: 'castle', place: '城堡' },
-    { name: '三個數找缺項',   desc: '7 + 3 + ? = 15', color: 'cyan', scene: 'sea', place: '海底' },
-    { name: '湊二十',         desc: '13 + ? = 20', color: 'fuchsia', scene: 'fireworks', place: '煙火' }
+    { name: '三個數',         desc: '7 + 3 + 5', color: 'cyan',   scene: 'sea',    place: '海底' },
+    { name: '三個數',         desc: '7 + 3 + 5', color: 'fuchsia', scene: 'fireworks', place: '煙火' }
   ];
 
   function rnd(min, max) { return min + Math.floor(Math.random() * (max - min + 1)); }
@@ -211,7 +211,7 @@
   }
 
   /**
-   * 71–80：三個數相加。每一步都很小，難的不是算，是要看出「先做哪兩個」。
+   * 71–100：三個數相加。每一步都很小，難的不是算，是要看出「先做哪兩個」。
    *
    * 7 + 3 + 5 從左往右一路數要數八下，先湊十再加五只要五下。
    * 一半的題目刻意藏一組湊成十的配對，而且位置會換 —— 他得先掃過三個數
@@ -236,68 +236,6 @@
     return mk(a + ' + ' + b + ' + ' + c + ' = ?', a + b + c, 'near');
   }
 
-  /** 三個數、其中一個不見了。未知數擺哪裡由關卡決定，最後才敢放到最前面 */
-  function threeMissingText(k, a, b, h) {
-    var pos = k < 3 ? 2 : (k < 6 ? rnd(1, 2) : rnd(0, 2));
-    var t = pos === 0 ? ['?', a, b] : (pos === 1 ? [a, '?', b] : [a, b, '?']);
-    return mk(t.join(' + ') + ' = ' + (a + b + h), h, 'near');
-  }
-
-  /**
-   * 81–90：三個數，而且不見的那個會在任何位置。
-   *
-   * 把前面兩件事疊起來：三個數要先找出好算的那對（城堡），缺項要倒過來想
-   * （雪地、彩虹）。兩個都練熟了，這裡合在一起用 —— 是組合不是加深，
-   * 成本還是落在「不見的那個數」上，跟第 71–80 關同一個量級。
-   *
-   * 一半的題目裡有兩個數剛好湊成十，先看出來就只剩最後一步。
-   */
-  function threeMissing(k) {
-    var top = k < 4 ? 14 : (k < 7 ? 17 : 20);
-
-    if (Math.random() < 0.5) {
-      // 已知的那兩個剛好湊十。h 的上限要扣掉那個十，否則和會超過 top
-      var h1 = rnd(1, Math.min(7, top - 10));
-      var a1 = rnd(1, 9);
-      return threeMissingText(k, a1, 10 - a1, h1);
-    }
-    // 沒有湊十配對的版本。已知的那兩個加起來至少要 8，否則會冒出
-    // 「2 + ? + 3 = 7」這種跟這個階段完全不搭的小題目
-    var h = rnd(1, 6);
-    var a = rnd(2, 6);
-    var lo = Math.max(2, 8 - a);
-    var hi = Math.min(9, top - h - a);
-    if (lo > hi) {                                // 湊不出來就改走湊十那條
-      var a2 = rnd(1, 9);
-      return threeMissingText(k, a2, 10 - a2, rnd(1, Math.min(7, top - 10)));
-    }
-    return threeMissingText(k, a, rnd(lo, hi), h);
-  }
-
-  /**
-   * 91–100：湊二十。把湊十的想法搬到下一個整十，收在他最熟的形狀上。
-   *
-   * 只出「不見的是那個小的」這種：13 + ? = 20 從 13 數到 20 是七下，
-   * 反過來 ? + 7 = 20 要從 7 數到 20 是十三下 —— 同樣一個事實，
-   * 問法選錯成本差一倍。所以兩種寫法都讓小的那個當答案。
-   */
-  function makeTwenty(k) {
-    // 二十的夥伴只有九個事實，兩種寫法也才十八題 —— 光靠它撐不滿十關。
-    // 所以三個數的版本從第三關就開始摻進來，順便把城堡的形狀接上。
-    if (k >= 2 && Math.random() < (k < 5 ? 0.25 : 0.45)) {
-      var h = rnd(2, 7);
-      var rest = 20 - h;
-      var a = rnd(Math.max(1, rest - 9), Math.min(9, rest - 1));
-      return threeMissingText(k, a, rest - a, h);
-    }
-
-    var x = rnd(k < 5 ? 13 : 12, 18);
-    var miss = 20 - x;
-    return Math.random() < 0.6
-      ? mk(x + ' + ? = 20', miss, 'near')
-      : mk('? + ' + x + ' = 20', miss, 'near');
-  }
-
   /** 減法一律保證結果不是負數 —— 五歲還沒有負數的概念 */
   function makeQuestion(stage) {
     var tier = tierOf(stage);
@@ -320,9 +258,9 @@
     if (tier === 4) return tenPartner(k);                       // 天空：湊十
     if (tier === 6) return missingSpot(k, false);               // 雪地：? 在後面
     if (tier === 7) return missingSpot(k, true);                // 彩虹：? 也會跑到前面
-    if (tier === 8) return threeTerms(k);                       // 城堡：三個數
-    if (tier === 9) return threeMissing(k);                     // 海底：三個數找缺項
-    if (tier === 10) return makeTwenty(k);                      // 煙火：湊二十
+    // 城堡、海底、煙火都是三個數。換的只有場景 —— 同一件事再練三十關，
+    // 到後面是要他不用數就知道，那需要的是重複，不是新花樣。
+    if (tier >= 8) return threeTerms(k);
 
     if (k < 3) return addOverTen(k);                            // 太空：湊十拿來用
     return k < 6 ? subOverTen(k - 3) : twoDigit(k - 6);
