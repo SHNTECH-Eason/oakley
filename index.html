@@ -562,12 +562,9 @@
 </section>
 
 <!-- ════ 挑戰 ════ -->
+<!-- 數學和英文各一個分頁、各一張地圖。不混在一起 ——
+     混了他會失去「我數學越來越強」的感覺 -->
 <section class="view" id="view-quest">
-  <!-- 兩張獨立的地圖。不混在一起 —— 混了他會失去「我數學越來越強」的感覺 -->
-  <div class="subject" id="subject-switch">
-    <button class="subject__btn is-on" data-subject="math" data-zy="數學"></button>
-    <button class="subject__btn" data-subject="eng">ABC</button>
-  </div>
   <div class="stats">
     <div class="stat stat--paw">
       <div class="stat__num" id="stat-stage">1</div>
@@ -584,6 +581,26 @@
   </div>
   <div class="quest-note" id="quest-note"></div>
   <div class="map" id="quiz-map"></div>
+</section>
+
+<!-- ════ 英文 ════ -->
+<section class="view" id="view-eng">
+  <div class="stats">
+    <div class="stat stat--paw">
+      <div class="stat__num" id="eng-stat-stage">1</div>
+      <div class="stat__label" data-zy="目前關卡"></div>
+    </div>
+    <div class="stat stat--fire">
+      <div class="stat__num" id="eng-stat-today">0</div>
+      <div class="stat__label" data-zy="今天過關"></div>
+    </div>
+    <div class="stat stat--coin">
+      <div class="stat__num" id="eng-stat-coin">0</div>
+      <div class="stat__label" data-zy="金幣"></div>
+    </div>
+  </div>
+  <div class="quest-note" id="eng-quest-note"></div>
+  <div class="map" id="eng-map"></div>
 </section>
 
 <!-- ════ 家長 ════ -->
@@ -708,7 +725,8 @@
 <!-- ════ 底部分頁 ════ -->
 <nav class="tabbar">
   <button class="tab tab--active" data-view="today"><span class="tab__icon">🐾</span><span class="tab__label" data-zy="今天"></span></button>
-  <button class="tab" data-view="quest"><span class="tab__icon">🎮</span><span class="tab__label" data-zy="挑戰"></span></button>
+  <button class="tab" data-view="quest"><span class="tab__icon">🎮</span><span class="tab__label" data-zy="數學"></span></button>
+  <button class="tab" data-view="eng"><span class="tab__icon">🔤</span><span class="tab__label tab__label--plain">ABC</span></button>
   <button class="tab" data-view="reward"><span class="tab__icon">🎁</span><span class="tab__label" data-zy="獎勵"></span></button>
   <button class="tab" data-view="week"><span class="tab__icon">📅</span><span class="tab__label" data-zy="本週"></span></button>
   <button class="tab" data-view="parent"><span class="tab__icon">⚙️</span><span class="tab__label tab__label--plain">家長</span></button>

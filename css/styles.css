@@ -594,34 +594,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
 }
 .stats--week { margin-top: 14px; margin-bottom: 0; }
 
-/* ── 數學／英文切換 ──────────────────────────────────────── */
-
-.subject {
-  display: flex;
-  gap: 6px;
-  background: #e2e8f0;
-  border-radius: 999px;
-  padding: 4px;
-  margin-bottom: 12px;
-}
-.subject__btn {
-  flex: 1;
-  border: none;
-  background: none;
-  border-radius: 999px;
-  padding: 9px 0;
-  font-size: 1.02rem;
-  font-weight: 900;
-  color: var(--ink-soft);
-  min-height: 44px;
-  transition: background .15s, color .15s;
-}
-.subject__btn.is-on {
-  background: #fff;
-  color: var(--brand);
-  box-shadow: var(--shadow);
-}
-
 /* 每個階段一個場景區塊，背景隨主題變化 */
 .map__section {
   position: relative;

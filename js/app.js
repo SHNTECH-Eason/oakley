@@ -859,28 +859,33 @@
   // ── 數學挑戰 ────────────────────────────────────────────
 
   var quizState = null;      // { set, i, correct, practice, level }
-  var subject = 'math';      // 'math' | 'eng'
+  var subject = 'math';      // 'math' | 'eng'，由目前在哪個分頁決定
 
   /**
    * 兩科的差異全部收在這裡，地圖和挑戰介面其餘部分完全共用。
    * 進度、每日額度、最佳時間都各自獨立 —— 練了英文不該害他今天不能玩數學。
    */
-  function S() {
-    return subject === 'eng' ? {
+  function S(which) {
+    return (which || subject) === 'eng' ? {
       engine: Eng,
       stage: Store.engStage, clearedToday: Store.engClearedToday,
       left: Store.engAdvancesLeft, canAdvance: Store.engCanAdvance,
-      bestTime: Store.engBestTime, record: Store.recordEngAttempt
+      bestTime: Store.engBestTime, record: Store.recordEngAttempt,
+      map: '#eng-map', note: '#eng-quest-note',
+      statStage: '#eng-stat-stage', statToday: '#eng-stat-today', statCoin: '#eng-stat-coin'
     } : {
       engine: Quiz,
       stage: Store.quizStage, clearedToday: Store.clearedToday,
       left: Store.advancesLeft, canAdvance: Store.canAdvance,
-      bestTime: Store.bestTime, record: Store.recordQuizAttempt
+      bestTime: Store.bestTime, record: Store.recordQuizAttempt,
+      map: '#quiz-map', note: '#quest-note',
+      statStage: '#stat-stage', statToday: '#stat-today', statCoin: '#stat-coin'
     };
   }
 
-  /** 挑戰分頁：上面三個數字，下面整張闖關地圖 */
-  function renderQuest() {
+  /** 闖關分頁：上面三個數字，下面整張地圖。數學和英文共用這段 */
+  function renderQuest(which) {
+    subject = which || subject;
     var s = S();
     var E = s.engine;
     var stage = s.stage();
@@ -889,15 +894,11 @@
     var limit = Store.dailyLimit();
     var left = s.left();
 
-    $$('#subject-switch .subject__btn').forEach(function (b) {
-      b.classList.toggle('is-on', b.dataset.subject === subject);
-    });
-
-    $('#stat-stage').textContent = all ? '🏆' : String(stage);
-    $('#stat-today').textContent = limit
+    $(s.statStage).textContent = all ? '🏆' : String(stage);
+    $(s.statToday).textContent = limit
       ? (s.clearedToday() + '/' + limit)
       : String(s.clearedToday());
-    $('#stat-coin').textContent = Store.coins();
+    $(s.statCoin).textContent = Store.coins();
 
     // 額度要在他開始之前就看得到 —— 玩到一半才被擋是最差的體驗
     var note;
@@ -908,7 +909,7 @@
              '　過一關 +' + E.coinsOf(stage) + ' 金幣';
       if (limit) note += '　今天還可以闖 ' + left + ' 關';
     }
-    $('#quest-note').textContent = note;
+    $(s.note).textContent = note;
 
     renderMap();
     setTimeout(scrollToCurrentStage, 50);
@@ -989,7 +990,7 @@
   function renderMap() {
     var acc = S();
     var E = acc.engine;
-    var map = $('#quiz-map');
+    var map = $(acc.map);
     var current = acc.stage();
     map.textContent = '';
 
@@ -1052,8 +1053,9 @@
   }
 
   function scrollToCurrentStage() {
-    if (view !== 'quest') return;
-    var node = $('#map-current') || $('.map__done-all');
+    if (view !== 'quest' && view !== 'eng') return;
+    var box = $(S().map);
+    var node = $('#map-current', box) || $('.map__done-all', box);
     if (node) node.scrollIntoView({ block: 'center', behavior: 'auto' });
   }
 
@@ -1679,7 +1681,8 @@
     if (next === 'today') renderToday();
     if (next === 'reward') renderReward();
     if (next === 'week') { weekAnchor = Store.today(); renderWeek(); }
-    if (next === 'quest') renderQuest();
+    if (next === 'quest') renderQuest('math');
+    if (next === 'eng') renderQuest('eng');
     if (next === 'parent') renderParent();
   }
 
@@ -1832,13 +1835,6 @@
       sayWord(quizState.set[quizState.i].item.w, 0);
     });
 
-    $$('#subject-switch .subject__btn').forEach(function (b) {
-      b.addEventListener('click', function () {
-        if (subject === this.dataset.subject) return;
-        subject = this.dataset.subject;
-        renderQuest();
-      });
-    });
 
     $('#give-ok').addEventListener('click', confirmGive);
     $('#give-cancel').addEventListener('click', function () {
