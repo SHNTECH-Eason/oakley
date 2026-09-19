@@ -38,8 +38,11 @@
         pointsPerTask: 1,    // 每完成一項的掌印數
         perfectBonus: 5,     // 當日全部完成的額外掌印
         quizStage: 1,        // 數學闖關目前在第幾關（全對才會前進）
+        engStage: 1,         // 英文闖關目前在第幾關。刻意跟數學各自獨立 ——
+                             // 兩科混在一起他會失去「我數學越來越強」的感覺
         dailyAdvance: 3,     // 一天最多往前推進幾關（0 = 不限）
         bestTimes: {},       // 每一關的最佳完成時間（毫秒）
+        engBestTimes: {},    // 英文各關的最佳完成時間
         sound: true,         // 打卡音效（睡前那一項會響，可以關掉）
         speech: false        // 念出項目名稱與稱讚。五歲還不識字，聽比看有用，
                              // 但合成語音有機械感，所以預設關閉讓家長自己決定
@@ -271,9 +274,13 @@
     };
   }
 
-  /** 闖關金幣：由已通過的關卡數直接算出來，不另外存，資料不會對不上 */
+  /**
+   * 闖關金幣：由已通過的關卡數直接算出來，不另外存，資料不會對不上。
+   * 兩科共用同一個金幣池 —— 分成兩種幣別他會搞混，而金幣反正不做兌換，
+   * 它只是「我總共破了幾關」的紀錄。
+   */
   function coins() {
-    return Quiz.coinsFor(quizStage() - 1);
+    return Quiz.coinsFor(quizStage() - 1) + Eng.coinsFor(engStage() - 1);
   }
 
   /** 作息表之外的特別獎勵總點數 */
@@ -486,6 +493,77 @@
     };
   }
 
+  // ── 英文闖關 ────────────────────────────────────────────────
+  //
+  // 跟數學共用同一份每日紀錄，但用不同的欄位（engCleared）。
+  // 每日額度也各自獨立 —— 兩科不該互相搶，練了英文不能害他今天不能玩數學。
+
+  function engStage() {
+    return Math.min(Eng.STAGES, Math.max(1, state.settings.engStage || 1));
+  }
+
+  function engClearedToday() {
+    var t = quizToday();
+    return t && Array.isArray(t.engCleared) ? t.engCleared.length : 0;
+  }
+
+  function engAdvancesLeft() {
+    var limit = dailyLimit();
+    return limit === 0 ? Infinity : Math.max(0, limit - engClearedToday());
+  }
+
+  function engCanAdvance() {
+    return engStage() <= Eng.STAGES && engAdvancesLeft() > 0;
+  }
+
+  function engBestTime(stage) {
+    var t = state.settings.engBestTimes || {};
+    return t[stage] || null;
+  }
+
+  function recordEngAttempt(stage, correct, total, elapsed) {
+    var key = dateKey(today());
+    var s = state.settings;
+    var rec = state.quizzes[key] || { date: key, cleared: [], engCleared: [], attempts: 0, at: null };
+    if (!Array.isArray(rec.cleared)) rec.cleared = [];
+    if (!Array.isArray(rec.engCleared)) rec.engCleared = [];
+
+    var passed = correct >= total;
+    var before = coins();
+    rec.attempts = (rec.attempts || 0) + 1;
+
+    var advanced = false, best = null, isBest = false;
+
+    if (passed && stage === engStage() && engCanAdvance()) {
+      rec.engCleared.push(stage);
+      s.engStage = stage + 1;
+      advanced = true;
+    }
+
+    if (passed && elapsed > 0) {
+      s.engBestTimes = s.engBestTimes || {};
+      var prev = s.engBestTimes[stage];
+      if (!prev || elapsed < prev) { s.engBestTimes[stage] = elapsed; isBest = !!prev; }
+      best = s.engBestTimes[stage];
+    }
+
+    rec.at = new Date().toISOString();
+    state.quizzes[key] = rec;
+
+    persist();
+    notify({ origin: 'local', kind: 'quiz', dateKey: key, result: rec });
+    if (advanced || passed) notify({ origin: 'local', kind: 'profile' });
+
+    return {
+      passed: passed, advanced: advanced,
+      coinsGained: coins() - before,
+      stage: engStage(), clearedToday: rec.engCleared.length,
+      elapsed: elapsed, best: best, isBest: isBest,
+      tierDone: advanced && (stage % Eng.PER_TIER === 0),
+      allDone: engStage() > Eng.STAGES
+    };
+  }
+
   function applyRemoteQuiz(key, data) {
     if (data) state.quizzes[key] = data;
     else delete state.quizzes[key];
@@ -676,6 +754,13 @@
     quizStage: quizStage,
     clearedToday: clearedToday,
     canAdvance: canAdvance,
+
+    engStage: engStage,
+    engClearedToday: engClearedToday,
+    engAdvancesLeft: engAdvancesLeft,
+    engCanAdvance: engCanAdvance,
+    engBestTime: engBestTime,
+    recordEngAttempt: recordEngAttempt,
     dailyLimit: dailyLimit,
     advancesLeft: advancesLeft,
     recordQuizAttempt: recordQuizAttempt,

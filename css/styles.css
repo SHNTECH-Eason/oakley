@@ -594,6 +594,34 @@ button { font: inherit; color: inherit; cursor: pointer; }
 }
 .stats--week { margin-top: 14px; margin-bottom: 0; }
 
+/* ── 數學／英文切換 ──────────────────────────────────────── */
+
+.subject {
+  display: flex;
+  gap: 6px;
+  background: #e2e8f0;
+  border-radius: 999px;
+  padding: 4px;
+  margin-bottom: 12px;
+}
+.subject__btn {
+  flex: 1;
+  border: none;
+  background: none;
+  border-radius: 999px;
+  padding: 9px 0;
+  font-size: 1.02rem;
+  font-weight: 900;
+  color: var(--ink-soft);
+  min-height: 44px;
+  transition: background .15s, color .15s;
+}
+.subject__btn.is-on {
+  background: #fff;
+  color: var(--brand);
+  box-shadow: var(--shadow);
+}
+
 /* 每個階段一個場景區塊，背景隨主題變化 */
 .map__section {
   position: relative;
@@ -797,6 +825,62 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .quiz__opt.is-wrong { background: #fecaca; border-color: #f87171; color: #7f1d1d; }
 .quiz__opt:disabled { opacity: .55; }
 .quiz__opt.is-right:disabled, .quiz__opt.is-wrong:disabled { opacity: 1; }
+
+/* ── 英文題 ────────────────────────────────────────────────
+   題目是聲音不是字，所以「題目區」變成一顆喇叭。
+   單字刻意不寫出來 —— 寫出來就變成看字，不是聽了。              */
+
+.quiz--eng .quiz__q { font-size: 2.4rem; }
+
+.quiz__listen {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+  padding: 11px 22px;
+  border: 3px solid var(--brand);
+  border-radius: 999px;
+  background: #eff6ff;
+  color: var(--brand-dark);
+  font-size: .95rem;
+  font-weight: 900;
+  min-height: 44px;
+  box-shadow: var(--shadow);
+  animation: listen-pulse 2s ease-in-out infinite;
+}
+.quiz__listen[hidden] { display: none; }
+.quiz__listen:active { transform: scale(.96); }
+.quiz__listen-icon { width: 22px; height: 22px; color: var(--brand); flex-shrink: 0; }
+
+/* 輕輕呼吸，告訴他這裡可以再按 */
+@keyframes listen-pulse {
+  0%, 100% { box-shadow: var(--shadow); }
+  50%      { box-shadow: 0 0 0 7px rgba(37, 99, 235, .14), var(--shadow); }
+}
+
+/* 圖卡選項：整張都是圖，不放英文字 */
+.quiz__opt--pic {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 10px;
+  min-height: 96px;
+}
+.quiz__pic { width: 62px; height: 62px; }
+.quiz__swatch {
+  width: 58px; height: 58px;
+  border-radius: 50%;
+  border: 3px solid rgba(15, 23, 42, .18);   /* 白色也看得出邊界 */
+}
+.quiz__digit {
+  font-family: ui-monospace, 'Cascadia Mono', Menlo, monospace;
+  font-size: 2.6rem;
+  font-weight: 900;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quiz__listen { animation: none; }
+}
 
 .quiz__mark { font-size: 1.05rem; font-weight: 900; min-height: 1.9em; line-height: 1.8; }
 .quiz__mark.is-right { color: #15803d; }

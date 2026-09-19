@@ -31,14 +31,19 @@
     return n;
   }
 
-  function svgIcon(name, className) {
+  /** 完整的 symbol id。英文圖卡是 e-* 前綴，跟作息的 i-* 分開 */
+  function svgRef(id, className) {
     var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     if (className) svg.setAttribute('class', className);
     svg.setAttribute('viewBox', '0 0 64 64');
     var use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
-    use.setAttribute('href', '#i-' + name);
+    use.setAttribute('href', '#' + id);
     svg.appendChild(use);
     return svg;
+  }
+
+  function svgIcon(name, className) {
+    return svgRef('i-' + name, className);
   }
 
   /** 項目名稱用「/」分段，各段獨立加注音，避免斜線被當成字 */
@@ -203,9 +208,69 @@
     }, delay || 0);
   }
 
+  // ── 英文單字的發音 ────────────────────────────────────────
+  //
+  // 剛好有個不對稱：iOS 的中文語音（美佳）是壓縮版、機械感重，
+  // 但英文語音品質好得多。所以中文那邊要考慮錄音，英文這邊系統語音就夠用。
+  //
+  // 這裡跟中文的 speak() 分開，因為它不受「念出稱讚」那個開關管 ——
+  // 英文題目本身就是聲音，關掉就沒題目了。
+
+  var enVoice = null;
+  var engVoiceWarned = false;
+
+  function pickEnVoice() {
+    if (enVoice) return enVoice;
+    if (!('speechSynthesis' in window)) return null;
+    var voices = speechSynthesis.getVoices() || [];
+    var en = voices.filter(function (v) { return /^en([-_]|$)/i.test(v.lang); });
+    // 美式優先，其次任何英文；本機語音優先（離線也能用）
+    enVoice = en.filter(function (v) { return /en[-_]US/i.test(v.lang) && v.localService; })[0] ||
+              en.filter(function (v) { return /en[-_]US/i.test(v.lang); })[0] ||
+              en[0] || null;
+    return enVoice;
+  }
+
+  /**
+   * 這台裝置念不念得出英文。
+   *
+   * 語音清單常常要等 voiceschanged 才拿得到，所以清單是空的時候先當成「有」——
+   * 絕大多數裝置都內建英文語音，為了一個還沒載好的清單就退回顯示單字，
+   * 會把一個好好的聽力題變成看字題。真的沒有英文語音才退回。
+   */
+  function speechReady() {
+    if (!('speechSynthesis' in window)) return false;
+    var voices = speechSynthesis.getVoices() || [];
+    if (!voices.length) return true;
+    return !!pickEnVoice();
+  }
+
+  function sayWord(word, delay) {
+    if (!('speechSynthesis' in window)) return;
+    setTimeout(function () {
+      try {
+        speechSynthesis.cancel();
+        var u = new SpeechSynthesisUtterance(word);
+        u.lang = 'en-US';
+        u.rate = 0.8;              // 單字要慢，他要聽清楚每個音
+        var v = pickEnVoice();
+        if (v) u.voice = v;
+        speechSynthesis.speak(u);
+      } catch (e) {}
+    }, delay || 0);
+  }
+
   if ('speechSynthesis' in window) {
     // 有些瀏覽器要等這個事件才拿得到語音清單
-    speechSynthesis.addEventListener('voiceschanged', function () { zhVoice = null; pickVoice(); });
+    speechSynthesis.addEventListener('voiceschanged', function () {
+      zhVoice = null; enVoice = null;
+      pickVoice(); pickEnVoice();
+      // 清單晚一步才到的話，把題目區重畫成正確的樣子（喇叭或單字）
+      if (quizState && quizState.mode === 'eng') {
+        $('#quiz-question').textContent =
+          speechReady() ? '🔊' : quizState.set[quizState.i].item.w;
+      }
+    });
   }
 
   function buzz(ms) {
@@ -794,28 +859,53 @@
   // ── 數學挑戰 ────────────────────────────────────────────
 
   var quizState = null;      // { set, i, correct, practice, level }
+  var subject = 'math';      // 'math' | 'eng'
+
+  /**
+   * 兩科的差異全部收在這裡，地圖和挑戰介面其餘部分完全共用。
+   * 進度、每日額度、最佳時間都各自獨立 —— 練了英文不該害他今天不能玩數學。
+   */
+  function S() {
+    return subject === 'eng' ? {
+      engine: Eng,
+      stage: Store.engStage, clearedToday: Store.engClearedToday,
+      left: Store.engAdvancesLeft, canAdvance: Store.engCanAdvance,
+      bestTime: Store.engBestTime, record: Store.recordEngAttempt
+    } : {
+      engine: Quiz,
+      stage: Store.quizStage, clearedToday: Store.clearedToday,
+      left: Store.advancesLeft, canAdvance: Store.canAdvance,
+      bestTime: Store.bestTime, record: Store.recordQuizAttempt
+    };
+  }
 
   /** 挑戰分頁：上面三個數字，下面整張闖關地圖 */
   function renderQuest() {
-    var stage = Store.quizStage();
-    var all = stage > Quiz.STAGES;
+    var s = S();
+    var E = s.engine;
+    var stage = s.stage();
+    var all = stage > E.STAGES;
 
     var limit = Store.dailyLimit();
-    var left = Store.advancesLeft();
+    var left = s.left();
+
+    $$('#subject-switch .subject__btn').forEach(function (b) {
+      b.classList.toggle('is-on', b.dataset.subject === subject);
+    });
 
     $('#stat-stage').textContent = all ? '🏆' : String(stage);
     $('#stat-today').textContent = limit
-      ? (Store.clearedToday() + '/' + limit)
-      : String(Store.clearedToday());
+      ? (s.clearedToday() + '/' + limit)
+      : String(s.clearedToday());
     $('#stat-coin').textContent = Store.coins();
 
     // 額度要在他開始之前就看得到 —— 玩到一半才被擋是最差的體驗
     var note;
-    if (all) note = '五十關全部通關了！可以重玩任何一關';
+    if (all) note = E.STAGES + ' 關全部通關了！可以重玩任何一關';
     else if (left === 0) note = '今天的關卡闖完了，明天再來！已經過的關還可以重玩練習';
     else {
-      note = Quiz.tierInfo(stage).place + '・' + Quiz.tierInfo(stage).name +
-             '　過一關 +' + Quiz.coinsOf(stage) + ' 金幣';
+      note = E.tierInfo(stage).place + '・' + E.tierInfo(stage).name +
+             '　過一關 +' + E.coinsOf(stage) + ' 金幣';
       if (limit) note += '　今天還可以闖 ' + left + ' 關';
     }
     $('#quest-note').textContent = note;
@@ -897,17 +987,19 @@
   }
 
   function renderMap() {
+    var acc = S();
+    var E = acc.engine;
     var map = $('#quiz-map');
-    var current = Store.quizStage();
+    var current = acc.stage();
     map.textContent = '';
 
     var sides = ['center', 'right', 'center', 'left'];
     var section = null;
 
-    for (var s = 1; s <= Quiz.STAGES; s++) {
-      var tier = Quiz.tierInfo(s);
+    for (var s = 1; s <= E.STAGES; s++) {
+      var tier = E.tierInfo(s);
 
-      if ((s - 1) % Quiz.PER_TIER === 0) {
+      if ((s - 1) % E.PER_TIER === 0) {
         // 顏色靠 data-color 的屬性選擇器帶 --c 進來，不要另外寫 inline style
         section = el('div', 'map__section' + (s > current ? ' is-locked' : ''));
         section.setAttribute('data-scene', tier.scene);
@@ -929,8 +1021,8 @@
       row.setAttribute('data-side', sides[(s - 1) % sides.length]);
 
       var state = s < current ? 'done' : (s === current ? 'now' : 'locked');
-      var resting = state === 'now' && !Store.canAdvance() && current <= Quiz.STAGES;
-      var milestone = s % Quiz.PER_TIER === 0;
+      var resting = state === 'now' && !acc.canAdvance() && current <= E.STAGES;
+      var milestone = s % E.PER_TIER === 0;
       var node = el('button', 'map__node map__node--' + state +
         (milestone ? ' map__node--goal' : '') + (resting ? ' map__node--rest' : ''));
       node.appendChild(el('span', 'map__num', String(s)));
@@ -942,7 +1034,7 @@
       if (state === 'now') node.id = 'map-current';
 
       // 最快紀錄印在按鈕上。圓形節點塞不下中文，用 38" / 1'20" 的短寫法。
-      var best = Store.bestTime(s);
+      var best = acc.bestTime(s);
       if (state === 'done' && best) node.appendChild(el('span', 'map__best', Quiz.shortTime(best)));
 
       node.setAttribute('aria-label', '第 ' + s + ' 關' +
@@ -954,8 +1046,8 @@
       section.appendChild(row);
     }
 
-    if (current > Quiz.STAGES) {
-      map.appendChild(el('div', 'map__done-all', '🏆 ' + Quiz.STAGES + ' 關全部通關！你太厲害了'));
+    if (current > E.STAGES) {
+      map.appendChild(el('div', 'map__done-all', '🏆 ' + E.STAGES + ' 關全部通關！你太厲害了'));
     }
   }
 
@@ -966,11 +1058,11 @@
   }
 
   function onStageTap(stage) {
-    var current = Store.quizStage();
+    var current = S().stage();
 
     if (stage > current) { toast('先通過前面的關卡'); return; }
     if (stage < current) { startStage(stage, true); return; }      // 重玩，不計獎勵
-    if (!Store.canAdvance()) {
+    if (!S().canAdvance()) {
       // 只擋「往前推進」，已通過的關卡照樣能重玩，不是把人趕走
       toast('今天闖完 ' + Store.dailyLimit() + ' 關了，明天再來！舊的關卡還可以重玩');
       return;
@@ -998,14 +1090,26 @@
   }
 
   function startStage(stage, replay) {
+    var E = S().engine;
     quizState = {
-      set: Quiz.makeSet(stage),
+      mode: subject,             // 認住這一局是哪一科，中途切換分頁也不會錯亂
+      set: E.makeSet(stage),
       i: 0, correct: 0, stage: stage, replay: !!replay, marks: [],
       startedAt: Date.now()      // 只記錄花多久，不倒數
     };
-    $('#quiz-level').textContent = '第 ' + stage + ' 關' + (replay ? '（重玩）' : '');
+    $('#quiz-level').textContent = (subject === 'eng' ? 'ABC 第 ' : '第 ') + stage + ' 關' +
+                                   (replay ? '（重玩）' : '');
+    $('#quiz').classList.toggle('quiz--eng', subject === 'eng');
     showQuizPanel('play');
     $('#quiz').hidden = false;
+    if (subject === 'eng') {
+      unlockAudio();             // 英文題靠語音，第一次點的手勢要用掉
+      // 沒有英文語音的話題目會退回顯示單字，那就不是聽力了 —— 要讓家長知道
+      if (!speechReady() && !engVoiceWarned) {
+        engVoiceWarned = true;
+        toast('這台裝置沒有英文語音，先顯示單字');
+      }
+    }
     showQuestion();
   }
 
@@ -1016,20 +1120,53 @@
     renderTop();
   }
 
+  /** 把一個英文選項畫出來：圖、色塊、或數字 */
+  function engOption(word) {
+    var b = el('button', 'quiz__opt quiz__opt--pic');
+    b.setAttribute('aria-label', word.zh);
+    if (word.kind === 'color') {
+      var dot = el('span', 'quiz__swatch');
+      dot.style.background = word.val;
+      b.appendChild(dot);
+    } else if (word.kind === 'digit') {
+      b.appendChild(el('span', 'quiz__digit', word.val));
+    } else {
+      b.appendChild(svgRef(word.val, 'quiz__pic'));
+    }
+    return b;
+  }
+
   function showQuestion() {
     var q = quizState.set[quizState.i];
-    // 題目的寫法由 quiz.js 決定 —— 湊十那階是「8 + ? = 10」，
-    // 未知數不一定在等號後面，這裡不該假設題目長什麼樣子
-    $('#quiz-question').textContent = q.text;
+    var eng = quizState.mode === 'eng';
+
     $('#quiz-mark').textContent = '';
     $('#quiz-mark').className = 'quiz__mark';
     renderQuizDots(quizState.i);
-
-    // 這裡原本會畫出對應數量的掌印當數數的鷹架，後來拿掉了：
-    // 能數就不會算，那反而讓他繞過心算，變成在練數數而不是練加減。
+    $('#quiz-listen').hidden = !eng;
 
     var box = $('#quiz-options');
     box.textContent = '';
+
+    if (eng) {
+      // 刻意不把單字寫出來 —— 寫出來就變成看字，不是聽了。
+      // 語音載不起來的話才退回顯示單字，不然他會卡在沒有任何線索的畫面上。
+      $('#quiz-question').textContent = speechReady() ? '🔊' : q.item.w;
+      sayWord(q.item.w, 260);
+      q.options.forEach(function (opt) {
+        var b = engOption(opt);
+        b.addEventListener('click', function () { answer(opt, b); });
+        box.appendChild(b);
+      });
+      return;
+    }
+
+    // 題目的寫法由 quiz.js 決定 —— 湊十那階是「8 + ? = 10」，
+    // 未知數不一定在等號後面，這裡不該假設題目長什麼樣子
+    $('#quiz-question').textContent = q.text;
+
+    // 這裡原本會畫出對應數量的掌印當數數的鷹架，後來拿掉了：
+    // 能數就不會算，那反而讓他繞過心算，變成在練數數而不是練加減。
     q.options.forEach(function (opt) {
       var b = el('button', 'quiz__opt', String(opt));
       b.addEventListener('click', function () { answer(opt, b); });
@@ -1039,27 +1176,38 @@
 
   function answer(choice, btn) {
     var q = quizState.set[quizState.i];
-    var right = choice === q.answer;
+    var eng = quizState.mode === 'eng';
+    var right = eng ? choice.w === q.item.w : choice === q.answer;
 
-    $$('#quiz-options .quiz__opt').forEach(function (b) { b.disabled = true; });
+    var opts = $$('#quiz-options .quiz__opt');
+    opts.forEach(function (b) { b.disabled = true; });
     btn.classList.add(right ? 'is-right' : 'is-wrong');
 
     var mark = $('#quiz-mark');
     if (right) {
       quizState.correct++;
       quizState.marks[quizState.i] = true;
-      mark.textContent = '答對了！';
+      // 答對時把中文講出來，他才知道剛剛那個字是什麼意思
+      mark.textContent = eng ? (q.item.w + '　就是「' + q.item.zh + '」！') : '答對了！';
       mark.className = 'quiz__mark is-right';
       play('done', quizState.correct / Quiz.TOTAL);
       buzz(15);
     } else {
       quizState.marks[quizState.i] = false;
-      // 不用紅叉叉，直接把正確答案講出來，語氣保持往前
-      mark.textContent = '答案是 ' + q.answer + '，下次一定可以！';
+      // 不用紅叉叉，直接把正確答案標出來，語氣保持往前
+      if (eng) {
+        mark.textContent = q.item.w + ' 是「' + q.item.zh + '」，下次一定可以！';
+        opts.forEach(function (b, i) {
+          if (q.options[i] && q.options[i].w === q.item.w) b.classList.add('is-right');
+        });
+        sayWord(q.item.w, 700);
+      } else {
+        mark.textContent = '答案是 ' + q.answer + '，下次一定可以！';
+        opts.forEach(function (b) {
+          if (b.textContent === String(q.answer)) b.classList.add('is-right');
+        });
+      }
       mark.className = 'quiz__mark is-wrong';
-      $$('#quiz-options .quiz__opt').forEach(function (b) {
-        if (b.textContent === String(q.answer)) b.classList.add('is-right');
-      });
       play('undo');
     }
     renderQuizDots(-1);
@@ -1076,16 +1224,19 @@
   }
 
   function finishQuiz() {
+    var acc = quizState.mode === 'eng'
+      ? { engine: Eng, record: Store.recordEngAttempt }
+      : { engine: Quiz, record: Store.recordQuizAttempt };
     var correct = quizState.correct;
-    var passed = correct >= Quiz.TOTAL;
+    var passed = correct >= acc.engine.TOTAL;
     var stage = quizState.stage;
     var replay = quizState.replay;
     var elapsed = Date.now() - quizState.startedAt;
-    var outcome = replay ? null : Store.recordQuizAttempt(stage, correct, Quiz.TOTAL, elapsed);
+    var outcome = replay ? null : acc.record(stage, correct, acc.engine.TOTAL, elapsed);
 
     Zhuyin.fill($('#quiz-done-title'),
       passed ? '過關了' : (correct >= 7 ? '差一點點' : '再試一次'));
-    $('#quiz-score').textContent = correct + ' / ' + Quiz.TOTAL;
+    $('#quiz-score').textContent = correct + ' / ' + acc.engine.TOTAL;
 
     var reward = '這次沒有金幣，但有來就很棒';
     if (replay) reward = '重玩不計金幣';
@@ -1109,14 +1260,14 @@
 
     var up = $('#quiz-levelup');
     if (outcome && outcome.allDone) {
-      up.textContent = '🏆 五十關全部通關！';
+      up.textContent = '🏆 ' + acc.engine.STAGES + ' 關全部通關！';
       up.hidden = false;
     } else if (outcome && outcome.tierDone) {
-      up.textContent = '🚩 打完「' + Quiz.tierInfo(stage).place + '」！額外 +' +
-                       Quiz.COINS_PER_TIER_BONUS + ' 金幣';
+      up.textContent = '🚩 打完「' + acc.engine.tierInfo(stage).place + '」！額外 +' +
+                       acc.engine.COINS_PER_TIER_BONUS + ' 金幣';
       up.hidden = false;
     } else if (outcome && outcome.advanced) {
-      var left = Store.advancesLeft();
+      var left = quizState.mode === 'eng' ? Store.engAdvancesLeft() : Store.advancesLeft();
       up.textContent = '⭐ 解鎖第 ' + outcome.stage + ' 關' +
         (left === Infinity ? '' : (left > 0 ? '　今天還可以闖 ' + left + ' 關' : '　今天的關卡闖完了'));
       up.hidden = false;
@@ -1674,6 +1825,20 @@
       startStage(quizState ? quizState.stage : Store.quizStage(), quizState && quizState.replay);
     });
     $('#quiz-again').addEventListener('click', closeQuiz);
+
+    // 再聽一次。單字聽不清楚要能重播，不然就變成猜
+    $('#quiz-listen').addEventListener('click', function () {
+      if (!quizState || quizState.mode !== 'eng') return;
+      sayWord(quizState.set[quizState.i].item.w, 0);
+    });
+
+    $$('#subject-switch .subject__btn').forEach(function (b) {
+      b.addEventListener('click', function () {
+        if (subject === this.dataset.subject) return;
+        subject = this.dataset.subject;
+        renderQuest();
+      });
+    });
 
     $('#give-ok').addEventListener('click', confirmGive);
     $('#give-cancel').addEventListener('click', function () {

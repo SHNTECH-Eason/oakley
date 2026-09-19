@@ -23,6 +23,7 @@ var PRECACHE = [
   'js/zhuyin.js',
   'js/store.js',
   'js/quiz.js',
+  'js/english.js',
   'js/app.js',
   'js/sync.js',
   'js/firebase-config.js',
