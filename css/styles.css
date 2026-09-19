@@ -893,26 +893,56 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .reward-log__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
 .reward-log__item {
   display: flex;
-  align-items: center;
-  gap: 9px;
+  align-items: stretch;
   background: var(--card);
   border-radius: 12px;
-  padding: 9px 11px;
   box-shadow: var(--shadow);
   font-size: .82rem;
   font-weight: 700;
+  overflow: hidden;                  /* 讓兩顆按鈕的點擊區被圓角切齊 */
+  min-height: 44px;                  /* 兩顆按鈕都吃得到手指的最小尺寸 */
 }
+
+/* 整列是一顆按鈕：點下去把那次的稱讚再放一遍 */
+.reward-log__replay {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  background: none;
+  border: none;
+  padding: 10px 4px 10px 11px;
+  font: inherit;
+  text-align: left;
+  transition: background .15s, transform .12s ease;
+}
+.reward-log__replay:active { background: #fff7ed; transform: scale(.985); }
+
 .reward-log__when { color: var(--ink-faint); font-size: .72rem; font-weight: 500; flex-shrink: 0; }
 .reward-log__why { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .reward-log__pts { color: var(--gold); font-weight: 900; flex-shrink: 0; }
+
+/**
+ * 收回鈕。這一列小朋友會一直點來聽稱讚，✕ 就在同一列裡，
+ * 所以刻意做三件事讓它不容易被誤觸：
+ *   1. 用一條分隔線切開，視覺上不屬於可點的那一塊
+ *   2. 顏色壓到最淡，不吸引小朋友去點
+ *   3. 真正的保險是那個確認彈窗，不是靠把按鈕做小
+ * 所以尺寸不縮 —— 44×44 是手指的最小尺寸，大人要按的時候不能按不到。
+ */
 .reward-log__del {
+  flex-shrink: 0;
+  width: 44px;
   background: none;
   border: none;
+  border-left: 1px solid var(--line);
   color: var(--ink-faint);
+  opacity: .5;
   font-size: 1rem;
-  padding: 2px 4px;
-  flex-shrink: 0;
+  line-height: 1;
 }
+.reward-log__del:active { background: #fef2f2; color: var(--danger); opacity: 1; }
 .reward-log__empty { font-size: .78rem; font-weight: 500; color: var(--ink-faint); text-align: center; padding: 14px 0; }
 
 /* ── 紀錄 ────────────────────────────────────────────────── */

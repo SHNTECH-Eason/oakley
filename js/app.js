@@ -706,22 +706,56 @@
 
     items.forEach(function (b) {
       var li = el('li', 'reward-log__item');
-      li.appendChild(el('span', 'reward-log__when', b.date.slice(5).replace('-', '/')));
-      li.appendChild(el('span', 'reward-log__why', b.reason));
-      li.appendChild(el('span', 'reward-log__pts', '+' + b.points + ' 🐾'));
+
+      // 整列是一顆按鈕，點下去把那次的稱讚再放一遍。
+      // 被肯定過的事情值得再聽一次，而且這是小朋友唯一能自己主動要到稱讚的地方。
+      var replay = el('button', 'reward-log__replay');
+      replay.setAttribute('aria-label', '再聽一次：' + b.reason);
+      replay.appendChild(el('span', 'reward-log__when', b.date.slice(5).replace('-', '/')));
+      replay.appendChild(el('span', 'reward-log__why', b.reason));
+      replay.appendChild(el('span', 'reward-log__pts', '+' + b.points + ' 🐾'));
+      replay.addEventListener('click', function () { replayBonus(b, replay); });
+      li.appendChild(replay);
 
       var del = el('button', 'reward-log__del', '✕');
       del.title = '收回這個獎勵';
-      del.addEventListener('click', function () {
-        if (!confirm('收回「' + b.reason + '」的 ' + b.points + ' 個掌印？')) return;
-        Store.removeBonus(b.id);
-        renderRewardLog();
-        renderTop();
-        toast('已收回');
-      });
+      del.setAttribute('aria-label', '收回「' + b.reason + '」');
+      del.addEventListener('click', function () { askTakeBack(b); });
       li.appendChild(del);
+
       box.appendChild(li);
     });
+  }
+
+  /** 重播那一次的稱讚。不動資料，也刻意比當下給獎時小一號 —— 那才是正本 */
+  function replayBonus(b, anchor) {
+    var name = (Store.state.child.nickname || '').trim();
+    var line = name ? withName('{n}好棒！', name) + b.reason + '！' : b.reason + '，好棒！';
+
+    stampBurst(anchor, '#f59e0b', 14);
+    play('done', 0.7);
+    buzz(15);
+    speak(line, 200);
+    showBuddy(b.reason.length > 6 ? '好棒！' : b.reason + '，好棒！');
+  }
+
+  var pendingTakeBack = null;
+
+  function askTakeBack(b) {
+    pendingTakeBack = b;
+    $('#take-back-text').textContent =
+      '「' + b.reason + '」' + b.date.slice(5).replace('-', '/') + '　' + b.points + ' 個掌印會被扣回去。';
+    $('#take-back').hidden = false;
+  }
+
+  function confirmTakeBack() {
+    if (!pendingTakeBack) return;
+    Store.removeBonus(pendingTakeBack.id);
+    pendingTakeBack = null;
+    $('#take-back').hidden = true;
+    renderRewardLog();
+    renderTop();
+    toast('已收回');
   }
 
   /** 選了理由之後先確認，避免小朋友自己一直按 */
@@ -1645,6 +1679,12 @@
     $('#give-cancel').addEventListener('click', function () {
       pendingReward = null;
       $('#give').hidden = true;
+    });
+
+    $('#take-back-ok').addEventListener('click', confirmTakeBack);
+    $('#take-back-cancel').addEventListener('click', function () {
+      pendingTakeBack = null;
+      $('#take-back').hidden = true;
     });
     $('#give').addEventListener('click', function (e) {
       if (e.target === $('#give')) { pendingReward = null; $('#give').hidden = true; }
