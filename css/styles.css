@@ -40,6 +40,9 @@
 [data-color="lime"]    { --c: #4d7c0f; --c-soft: #f7fee7; --c-line: #a3e635; }
 [data-color="crimson"] { --c: #be123c; --c-soft: #fff1f2; --c-line: #fb7185; }
 [data-color="violet"]  { --c: #6d28d9; --c-soft: #f5f3ff; --c-line: #c4b5fd; }
+[data-color="sand"]    { --c: #b45309; --c-soft: #fffbeb; --c-line: #fcd34d; }
+[data-color="aqua"]    { --c: #0e7490; --c-soft: #ecfeff; --c-line: #7dd3fc; }
+[data-color="stone"]   { --c: #475569; --c-soft: #f8fafc; --c-line: #cbd5e1; }
 
 * { box-sizing: border-box; }
 
@@ -622,6 +625,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .map__section[data-scene="jungle"]  { background: linear-gradient(180deg, #365314 0%, #4D7C0F 40%, #A3E635 100%); }
 .map__section[data-scene="volcano"] { background: linear-gradient(180deg, #7F1D1D 0%, #DC2626 45%, #FB923C 100%); }
 .map__section[data-scene="aurora"]  { background: linear-gradient(180deg, #0F172A 0%, #065F46 45%, #34D399 100%); }
+.map__section[data-scene="desert"]  { background: linear-gradient(180deg, #38BDF8 0%, #FDE68A 45%, #FCD34D 100%); }
+.map__section[data-scene="waterfall"] { background: linear-gradient(180deg, #0369A1 0%, #38BDF8 45%, #A5F3FC 100%); }
+.map__section[data-scene="summit"]  { background: linear-gradient(180deg, #312E81 0%, #6366F1 45%, #C7D2FE 100%); }
+.map__section[data-scene="waterfall"] .map__num,
+.map__section[data-scene="summit"] .map__num,
 .map__section[data-scene="jungle"] .map__num,
 .map__section[data-scene="volcano"] .map__num,
 .map__section[data-scene="aurora"] .map__num,
@@ -683,7 +691,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .map__section[data-scene="fireworks"] .map__trail svg,
 .map__section[data-scene="jungle"] .map__trail svg,
 .map__section[data-scene="volcano"] .map__trail svg,
-.map__section[data-scene="aurora"] .map__trail svg { fill: #e2e8f0; }
+.map__section[data-scene="aurora"] .map__trail svg,
+.map__section[data-scene="waterfall"] .map__trail svg,
+.map__section[data-scene="summit"] .map__trail svg { fill: #e2e8f0; }
 
 .map__node {
   position: relative;

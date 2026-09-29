@@ -49,14 +49,20 @@
     { name: '三個數',         desc: '7 + 3 + 5', color: 'cyan',   scene: 'sea',    place: '海底' },
     { name: '三個數',         desc: '7 + 3 + 5', color: 'fuchsia', scene: 'fireworks', place: '煙火' },
 
-    // 第 101 關開始走湊十法，一個場景 20 關，跟題型對齊。
+    // 第 101 關開始走湊十法。場景還是十關一個，但題型每 20 關才換 ——
+    // 換風景是給眼睛的獎勵，換題型是學習的節奏，兩件事的合理間隔本來就不一樣。
+    // 所以每個題型配兩個場景。
+    //
     // 這三段刻意把「拆數字」和「為什麼這樣拆」分開 —— 那是兩件事：
     //   5 可以拆成 2 和 3        只看 5
     //   為什麼是 2 和 3          前面那個 8 決定的
     // 混在一起教，他會以為拆法是背出來的。
-    { name: '拆數字',     desc: '5 → 2 和 3',  color: 'lime',    scene: 'jungle',  place: '叢林', span: 20 },
-    { name: '為什麼這樣拆', desc: '8 + 5 → 2 和 3', color: 'crimson', scene: 'volcano', place: '火山', span: 20 },
-    { name: '跨十加法',   desc: '8 + 5 = 13',  color: 'violet',  scene: 'aurora',  place: '極光', span: 20 }
+    { name: '拆數字',     desc: '5 → 2 和 3',     color: 'lime',    scene: 'jungle',    place: '叢林' },
+    { name: '拆數字',     desc: '5 → 2 和 3',     color: 'sand',    scene: 'desert',    place: '沙漠' },
+    { name: '為什麼這樣拆', desc: '8 + 5 → 2 和 3', color: 'crimson', scene: 'volcano',   place: '火山' },
+    { name: '為什麼這樣拆', desc: '8 + 5 → 2 和 3', color: 'aqua',    scene: 'waterfall', place: '瀑布' },
+    { name: '跨十加法',   desc: '8 + 5 = 13',     color: 'violet',  scene: 'aurora',    place: '極光' },
+    { name: '跨十加法',   desc: '8 + 5 = 13',     color: 'stone',   scene: 'summit',    place: '山頂' }
   ];
 
   // 每個場景幾關可以不一樣，from/to 由 span 累加算出來，不要在別處重算
@@ -365,11 +371,11 @@
     // 到後面是要他不用數就知道，那需要的是重複，不是新花樣。
     if (tier <= 10) return threeTerms(k);
 
-    // 第 101 關之後的場景是 20 關，k 要從場景的第一關重新算
-    var into = stage - tierInfo(stage).from;
-    if (tier === 11) return splitNumber(into);
-    if (tier === 12) return splitForTen(into);
-    return addAcrossTen(into);
+    // 題型的邊界是 20 關，跟場景（10 關）對不齊，所以 k 要從題型那一段的
+    // 第一關算起，不能用 tierInfo(stage).from
+    if (stage <= 120) return splitNumber(stage - 101);
+    if (stage <= 140) return splitForTen(stage - 121);
+    return addAcrossTen(stage - 141);
 
     if (k < 3) return addOverTen(k);                            // 太空：湊十拿來用
     return k < 6 ? subOverTen(k - 3) : twoDigit(k - 6);
