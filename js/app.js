@@ -959,6 +959,22 @@
              ['shell', 8, 26, 26], ['fish', 2, 38, 40], ['shell', 90, 40, 28],
              ['fish', 86, 54, 36], ['shell', 6, 58, 30], ['fish', 12, 70, 42],
              ['shell', 88, 74, 26], ['fish', 66, 84, 34], ['shell', 30, 90, 24]],
+    // 第 101 關之後的場景是 20 關，裝飾要多放一點才撐得住那個高度
+    jungle: [['tree', 2, 4, 58], ['tree', 86, 8, 52], ['cloud', 40, 2, 40],
+             ['tree', 6, 18, 48], ['tree', 90, 22, 54], ['tree', 1, 32, 56],
+             ['tree', 84, 38, 46], ['tree', 8, 48, 50], ['tree', 88, 54, 52],
+             ['tree', 2, 64, 54], ['tree', 86, 70, 48], ['tree', 10, 80, 50],
+             ['tree', 90, 86, 54], ['tree', 4, 92, 46]],
+    volcano: [['cloud', 30, 2, 46], ['star4', 8, 6, 22], ['cloud', 72, 8, 40],
+             ['star4', 90, 16, 18], ['star4', 4, 24, 20], ['cloud', 20, 30, 38],
+             ['star4', 84, 34, 22], ['star4', 12, 44, 18], ['cloud', 76, 48, 42],
+             ['star4', 6, 58, 22], ['star4', 88, 62, 20], ['cloud', 26, 70, 36],
+             ['star4', 80, 78, 18], ['star4', 10, 86, 22], ['star4', 66, 92, 18]],
+    aurora: [['star4', 6, 4, 24], ['star4', 34, 8, 18], ['star4', 88, 6, 22],
+             ['planet', 76, 16, 46], ['star4', 12, 22, 20], ['star4', 60, 26, 16],
+             ['star4', 90, 32, 22], ['star4', 4, 40, 18], ['planet', 20, 50, 40],
+             ['star4', 84, 52, 20], ['star4', 46, 58, 16], ['star4', 8, 66, 22],
+             ['star4', 88, 72, 18], ['star4', 30, 80, 20], ['star4', 70, 88, 22]],
     fireworks: [['firework', 6, 4, 52], ['firework', 78, 10, 46], ['star4', 40, 6, 22],
              ['firework', 2, 26, 44], ['star4', 88, 26, 20], ['firework', 84, 38, 50],
              ['star4', 26, 40, 18], ['firework', 8, 52, 46], ['star4', 66, 56, 22],
@@ -1000,7 +1016,7 @@
     for (var s = 1; s <= E.STAGES; s++) {
       var tier = E.tierInfo(s);
 
-      if ((s - 1) % E.PER_TIER === 0) {
+      if (E.isTierStart(s)) {
         // 顏色靠 data-color 的屬性選擇器帶 --c 進來，不要另外寫 inline style
         section = el('div', 'map__section' + (s > current ? ' is-locked' : ''));
         section.setAttribute('data-scene', tier.scene);
@@ -1023,7 +1039,7 @@
 
       var state = s < current ? 'done' : (s === current ? 'now' : 'locked');
       var resting = state === 'now' && !acc.canAdvance() && current <= E.STAGES;
-      var milestone = s % E.PER_TIER === 0;
+      var milestone = E.isTierEnd(s);
       var node = el('button', 'map__node map__node--' + state +
         (milestone ? ' map__node--goal' : '') + (resting ? ' map__node--rest' : ''));
       node.appendChild(el('span', 'map__num', String(s)));
@@ -1138,6 +1154,17 @@
     return b;
   }
 
+  /** 分解樹：要拆的數字下面長兩隻腳，空的那隻就是要答的 */
+  function showSplit(sp) {
+    $('#split-lead').textContent = sp.lead || '';
+    $('#split-lead').hidden = !sp.lead;
+    $('#split-top').textContent = String(sp.top);
+    $('#split-left').textContent = sp.left === null ? '?' : String(sp.left);
+    $('#split-right').textContent = sp.right === null ? '?' : String(sp.right);
+    $('#split-left').className = sp.left === null ? 'is-blank' : '';
+    $('#split-right').className = sp.right === null ? 'is-blank' : '';
+  }
+
   function showQuestion() {
     var q = quizState.set[quizState.i];
     var eng = quizState.mode === 'eng';
@@ -1146,6 +1173,11 @@
     $('#quiz-mark').className = 'quiz__mark';
     renderQuizDots(quizState.i);
     $('#quiz-listen').hidden = !eng;
+
+    // 有分解樹的題目就不用文字那一行，兩者只會出現一個
+    $('#quiz-split').hidden = !q.split;
+    $('#quiz-question').hidden = !!q.split;
+    if (q.split) showSplit(q.split);
 
     var box = $('#quiz-options');
     box.textContent = '';
@@ -1208,6 +1240,13 @@
         opts.forEach(function (b) {
           if (b.textContent === String(q.answer)) b.classList.add('is-right');
         });
+        // 分解樹把正確答案填回空的那隻腳，他看得到完整的拆法
+        if (q.split) {
+          var slot = q.split.left === null ? $('#split-left') : $('#split-right');
+          slot.textContent = String(q.answer);
+          slot.classList.remove('is-blank');
+          slot.classList.add('is-filled');
+        }
       }
       mark.className = 'quiz__mark is-wrong';
       play('undo');

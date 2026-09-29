@@ -145,6 +145,29 @@
       <rect x="276" y="92" width="28" height="28" rx="4" fill="#B45309"/>
     </symbol>
 
+    <symbol id="i-ground-jungle" viewBox="0 0 400 120">
+      <path d="M0 120V56l26-26 22 26 24-30 26 30 24-22 26 22 26-30 26 30 24-24 26 24 26-28 26 28 26-20 26 20v40Z" fill="#166534"/>
+      <path d="M0 120V84l30-20 28 20 30-16 30 16 30-22 30 22 30-14 30 14 30-18 30 18 34-12 38 12v36Z" fill="#14532D"/>
+      <path d="M60 118c-8-20 6-32 2-46M64 118c10-22-2-34 2-48" stroke="#4ADE80" stroke-width="6" fill="none" stroke-linecap="round"/>
+      <path d="M330 118c-8-22 8-32 3-44" stroke="#4ADE80" stroke-width="6" fill="none" stroke-linecap="round"/>
+    </symbol>
+
+    <symbol id="i-ground-volcano" viewBox="0 0 400 120">
+      <path d="M0 120 L120 30 L160 58 L210 14 L270 62 L330 26 L400 120Z" fill="#450A0A"/>
+      <path d="M210 14 L186 48h48Z" fill="#F97316"/>
+      <path d="M186 48c6 18-4 26 2 40h44c6-16-4-24 2-40Z" fill="#DC2626"/>
+      <rect y="102" width="400" height="18" fill="#1C1917"/>
+      <circle cx="70" cy="108" r="5" fill="#F97316"/><circle cx="300" cy="110" r="5" fill="#FB923C"/>
+      <circle cx="360" cy="106" r="4" fill="#F97316"/>
+    </symbol>
+
+    <symbol id="i-ground-aurora" viewBox="0 0 400 120">
+      <path d="M0 78 Q70 44 140 74 T280 68 T400 62 V120 H0Z" fill="#E0F2FE"/>
+      <path d="M0 98 Q90 74 180 96 T340 90 L400 100 V120 H0Z" fill="#BAE6FD"/>
+      <path d="M0 112 Q100 100 200 112 T400 106 V120 H0Z" fill="#7DD3FC"/>
+      <path d="M40 74l16-26 14 26ZM300 68l18-30 16 30Z" fill="#F8FAFC"/>
+    </symbol>
+
     <symbol id="i-ground-sea" viewBox="0 0 400 120">
       <path d="M0 62 Q60 40 120 60 T244 56 T400 52 V120 H0Z" fill="#0E7490"/>
       <path d="M0 88 Q90 66 180 86 T340 80 L400 90 V120 H0Z" fill="#FDE68A"/>
@@ -497,6 +520,21 @@
   <!-- 答題畫面 -->
   <div class="quiz__panel" id="quiz-play-panel">
     <div class="quiz__q" id="quiz-question"></div>
+    <!-- 拆數字用的分解樹，畫法跟課本一樣：要拆的數字下面長兩隻腳 -->
+    <div class="split" id="quiz-split" hidden>
+      <div class="split__lead" id="split-lead"></div>
+      <div class="split__tree">
+        <div class="split__top" id="split-top"></div>
+        <svg class="split__legs" viewBox="0 0 120 44" aria-hidden="true">
+          <path d="M60 4 L22 40 M60 4 L98 40" stroke="currentColor" stroke-width="5"
+                fill="none" stroke-linecap="round"/>
+        </svg>
+        <div class="split__parts">
+          <span id="split-left"></span>
+          <span id="split-right"></span>
+        </div>
+      </div>
+    </div>
     <!-- 英文題只放喇叭，不寫出單字 —— 寫出來就變成看字，不是聽了 -->
     <button class="quiz__listen" id="quiz-listen" hidden>
       <svg class="quiz__listen-icon" aria-hidden="true"><use href="#i-sound"></use></svg>

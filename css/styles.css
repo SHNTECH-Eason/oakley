@@ -37,6 +37,9 @@
 [data-color="rose"]    { --c: #e11d48; --c-soft: #fff1f2; --c-line: #fda4af; }
 [data-color="cyan"]    { --c: #0891b2; --c-soft: #ecfeff; --c-line: #67e8f9; }
 [data-color="fuchsia"] { --c: #c026d3; --c-soft: #fdf4ff; --c-line: #f0abfc; }
+[data-color="lime"]    { --c: #4d7c0f; --c-soft: #f7fee7; --c-line: #a3e635; }
+[data-color="crimson"] { --c: #be123c; --c-soft: #fff1f2; --c-line: #fb7185; }
+[data-color="violet"]  { --c: #6d28d9; --c-soft: #f5f3ff; --c-line: #c4b5fd; }
 
 * { box-sizing: border-box; }
 
@@ -616,6 +619,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .map__section[data-scene="castle"] { background: linear-gradient(180deg, #F97316 0%, #FBBF24 45%, #FEF3C7 100%); }
 .map__section[data-scene="sea"]    { background: linear-gradient(180deg, #0369A1 0%, #0891B2 45%, #22D3EE 100%); }
 .map__section[data-scene="fireworks"] { background: linear-gradient(180deg, #1E1B4B 0%, #4C1D95 50%, #6D28D9 100%); }
+.map__section[data-scene="jungle"]  { background: linear-gradient(180deg, #365314 0%, #4D7C0F 40%, #A3E635 100%); }
+.map__section[data-scene="volcano"] { background: linear-gradient(180deg, #7F1D1D 0%, #DC2626 45%, #FB923C 100%); }
+.map__section[data-scene="aurora"]  { background: linear-gradient(180deg, #0F172A 0%, #065F46 45%, #34D399 100%); }
+.map__section[data-scene="jungle"] .map__num,
+.map__section[data-scene="volcano"] .map__num,
+.map__section[data-scene="aurora"] .map__num,
 .map__section[data-scene="space"] .map__num,
 .map__section[data-scene="sea"] .map__num,
 .map__section[data-scene="fireworks"] .map__num { color: #fff; }
@@ -671,7 +680,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .map__trail svg { width: 13px; height: 13px; fill: #78716c; }
 .map__section[data-scene="space"] .map__trail svg,
 .map__section[data-scene="sea"] .map__trail svg,
-.map__section[data-scene="fireworks"] .map__trail svg { fill: #a5b4fc; }
+.map__section[data-scene="fireworks"] .map__trail svg,
+.map__section[data-scene="jungle"] .map__trail svg,
+.map__section[data-scene="volcano"] .map__trail svg,
+.map__section[data-scene="aurora"] .map__trail svg { fill: #e2e8f0; }
 
 .map__node {
   position: relative;
@@ -797,6 +809,60 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .quiz__opt.is-wrong { background: #fecaca; border-color: #f87171; color: #7f1d1d; }
 .quiz__opt:disabled { opacity: .55; }
 .quiz__opt.is-right:disabled, .quiz__opt.is-wrong:disabled { opacity: 1; }
+
+/* ── 分解樹 ────────────────────────────────────────────────
+   畫法跟課本一樣：要拆的數字下面長兩隻腳。
+   第 121 關之後左邊還會有「8 +」，腳掛在後面那個數底下。      */
+
+.split {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 10px;
+  color: var(--brand);
+  font-family: ui-monospace, 'Cascadia Mono', Menlo, monospace;
+  font-weight: 900;
+}
+.split[hidden] { display: none; }
+.split__lead { font-size: 3rem; line-height: 1.1; color: var(--ink); }
+.split__lead[hidden] { display: none; }
+
+.split__tree { display: flex; flex-direction: column; align-items: center; }
+.split__top { font-size: 3rem; line-height: 1.1; color: var(--ink); }
+.split__legs { width: 120px; height: 44px; }
+
+.split__parts {
+  display: flex;
+  justify-content: space-between;
+  width: 120px;
+  font-size: 2.2rem;
+  color: var(--ink);
+}
+/* 空的那隻腳畫成一個等著被填的框，比單一個問號清楚 */
+.split__parts .is-blank {
+  color: var(--brand);
+  border: 3px dashed var(--brand);
+  border-radius: 12px;
+  padding: 0 12px;
+  animation: blank-pulse 1.8s ease-in-out infinite;
+}
+.split__parts .is-filled {
+  color: #15803d;
+  border: 3px solid #22c55e;
+  border-radius: 12px;
+  padding: 0 12px;
+}
+@keyframes blank-pulse {
+  0%, 100% { background: transparent; }
+  50%      { background: #eff6ff; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .split__parts .is-blank { animation: none; }
+}
+@media (max-height: 700px) {
+  .split__lead, .split__top { font-size: 2.4rem; }
+  .split__parts { font-size: 1.8rem; }
+}
 
 /* ── 英文題 ────────────────────────────────────────────────
    題目是聲音不是字，所以「題目區」變成一顆喇叭。

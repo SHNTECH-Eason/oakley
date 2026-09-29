@@ -493,7 +493,7 @@
       coinsGained: coins() - before,
       stage: quizStage(), clearedToday: rec.cleared.length,
       elapsed: elapsed, best: best, isBest: isBest,
-      tierDone: advanced && (stage % Quiz.PER_TIER === 0),
+      tierDone: advanced && Quiz.isTierEnd(stage),
       allDone: quizStage() > Quiz.STAGES
     };
   }
@@ -565,7 +565,7 @@
       coinsGained: coins() - before,
       stage: engStage(), clearedToday: rec.engCleared.length,
       elapsed: elapsed, best: best, isBest: isBest,
-      tierDone: advanced && (stage % Eng.PER_TIER === 0),
+      tierDone: advanced && Eng.isTierEnd(stage),
       allDone: engStage() > Eng.STAGES
     };
   }

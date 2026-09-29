@@ -18,8 +18,7 @@
   'use strict';
 
   var TOTAL = 10;              // 每關題數
-  var STAGES = 100;
-  var PER_TIER = 10;
+  var PER_TIER = 10;           // 預設一個場景幾關；第 101 關之後的場景是 20 關
 
   // 闖關給的是「金幣」，不是掌印。兩種貨幣刻意分開：
   //   掌印 = 習慣的貨幣，靠每天做該做的事和家長給獎累積
@@ -48,19 +47,50 @@
     { name: '不見的數字在前面', desc: '? + 6 = 15', color: 'rose', scene: 'rainbow', place: '彩虹' },
     { name: '三個數',         desc: '7 + 3 + 5', color: 'orange', scene: 'castle', place: '城堡' },
     { name: '三個數',         desc: '7 + 3 + 5', color: 'cyan',   scene: 'sea',    place: '海底' },
-    { name: '三個數',         desc: '7 + 3 + 5', color: 'fuchsia', scene: 'fireworks', place: '煙火' }
+    { name: '三個數',         desc: '7 + 3 + 5', color: 'fuchsia', scene: 'fireworks', place: '煙火' },
+
+    // 第 101 關開始走湊十法，一個場景 20 關，跟題型對齊。
+    // 這三段刻意把「拆數字」和「為什麼這樣拆」分開 —— 那是兩件事：
+    //   5 可以拆成 2 和 3        只看 5
+    //   為什麼是 2 和 3          前面那個 8 決定的
+    // 混在一起教，他會以為拆法是背出來的。
+    { name: '拆數字',     desc: '5 → 2 和 3',  color: 'lime',    scene: 'jungle',  place: '叢林', span: 20 },
+    { name: '為什麼這樣拆', desc: '8 + 5 → 2 和 3', color: 'crimson', scene: 'volcano', place: '火山', span: 20 },
+    { name: '跨十加法',   desc: '8 + 5 = 13',  color: 'violet',  scene: 'aurora',  place: '極光', span: 20 }
   ];
+
+  // 每個場景幾關可以不一樣，from/to 由 span 累加算出來，不要在別處重算
+  (function () {
+    var s = 1;
+    TIERS.forEach(function (t) {
+      t.span = t.span || PER_TIER;
+      t.from = s;
+      t.to = s + t.span - 1;
+      s = t.to + 1;
+    });
+  })();
+
+  var STAGES = TIERS[TIERS.length - 1].to;
 
   function rnd(min, max) { return min + Math.floor(Math.random() * (max - min + 1)); }
 
-  /** 第幾關屬於第幾個難度階段（1–5） */
+  /** 第幾關屬於第幾個場景。場景不等寬，所以要查不能算 */
   function tierOf(stage) {
-    return Math.min(TIERS.length, Math.floor((stage - 1) / PER_TIER) + 1);
+    for (var i = 0; i < TIERS.length; i++) if (stage <= TIERS[i].to) return i + 1;
+    return TIERS.length;
   }
 
   function tierInfo(stage) {
     var t = tierOf(stage);
-    return Object.assign({ n: t, from: (t - 1) * PER_TIER + 1, to: t * PER_TIER }, TIERS[t - 1]);
+    return Object.assign({ n: t }, TIERS[t - 1]);
+  }
+
+  /** 是不是某個場景的第一關／最後一關。地圖分段和關主節點靠這兩個判斷 */
+  function isTierStart(stage) {
+    return TIERS.some(function (t) { return t.from === stage; });
+  }
+  function isTierEnd(stage) {
+    return TIERS.some(function (t) { return t.to === stage; });
   }
 
   // ── 出題 ──────────────────────────────────────────────────
@@ -81,8 +111,8 @@
   //
   // 每個階段裡面也會爬（用關卡在該階段的序位 k），不再是十關同一種。
 
-  function mk(text, answer, mode, trap) {
-    return { text: text, answer: answer, options: makeOptions(answer, mode, trap) };
+  function mk(text, answer, mode, trap, min) {
+    return { text: text, answer: answer, options: makeOptions(answer, mode, trap, min) };
   }
 
   function plain(a, op, b, mode) {
@@ -236,6 +266,79 @@
     return mk(a + ' + ' + b + ' + ' + c + ' = ?', a + b + c, 'near');
   }
 
+  /**
+   * 分解樹。畫法跟課本一樣：要拆的數字下面長兩隻腳。
+   * left / right 其中一個是 null，那個就是要答的。
+   */
+  function tree(lead, top, left, right, mode, trap) {
+    // 答案是空的那一隻，值等於上面的數減掉另一隻 —— 不是把已知的那隻抄過來
+    var answer = left === null ? top - right : top - left;
+    // text 不會顯示（有 split 時畫面走分解樹那條路），但 makeSet 拿它當去重的鍵。
+    // 留空的話一關十題會被當成同一題，實際只出得到七種。
+    var key = (lead || '') + top + ':' + left + ':' + right;
+    var q = mk(key, answer, mode || 'near', trap, 1);
+    q.split = { lead: lead, top: top, left: left, right: right };
+    return q;
+  }
+
+  /**
+   * 101–120：拆數字。只看一個數，跟十無關。
+   *
+   * 算術上這跟他第 51–70 關做的「2 + ? = 5」一模一樣，價值在三件事：
+   * 寫法跟明年課本一致、系統性把 2–10 的所有拆法掃過一遍、而且它是
+   * 下一段的前置。他會覺得簡單，這一段本來就是暖身。
+   */
+  function splitNumber(k) {
+    var lo = k < 5 ? 3 : (k < 12 ? 4 : 5);
+    var hi = k < 5 ? 6 : (k < 12 ? 8 : 10);
+
+    // 把範圍內所有的拆法列出來等機率抽。
+    // 先抽 top 再抽 left 的話小數字會被抽到比較多次 —— 實測「拆出 1」佔 22%、
+    // 「拆出 7」只有 3%，那他會一直練同幾個，而這一段的目的正是把所有拆法掃過。
+    var pairs = [];
+    for (var t = lo; t <= hi; t++)
+      for (var l = 1; l < t; l++) pairs.push([t, l]);
+
+    var p = pairs[rnd(0, pairs.length - 1)];
+    // 把整個數抄下來是這裡最常見的錯
+    return tree(null, p[0], p[1], null, 'near', p[0]);
+  }
+
+  /**
+   * 121–140：為什麼這樣拆。
+   *
+   * 121–130 問左腳：答案是 10 − 前面那個數，**刻意跟後面那個數無關**。
+   * 那不是缺陷，那就是這一段要教的事 —— 你要拆出多少，是前面那個數說了算。
+   *
+   * 131–140 問右腳：這時候才要兩個概念一起用 —— 先由前面決定拆多少，
+   * 再從後面那個數裡拿掉。
+   *
+   * 左右腳分開問，兩個概念才不會糊在一起。
+   */
+  function splitForTen(k) {
+    var lo = k < 3 ? 7 : (k < 7 ? 6 : 5);
+    var a = rnd(lo, 9);
+    var b = rnd(11 - a, 9);        // 和一定超過十，才需要湊
+    var left = 10 - a;
+    var right = b - left;
+
+    if (k < 10) {
+      // 問左腳。干擾項放右腳 —— 這兩個搞混是這一段最典型的錯
+      return tree(a + ' +', b, null, right, 'near', right);
+    }
+    // 問右腳。干擾項放左腳，同一個混淆反過來
+    return tree(a + ' +', b, left, null, 'near', left);
+  }
+
+  /** 141–160：腳不畫了，在腦子裡拆。對應課本的心算階段 */
+  function addAcrossTen(k) {
+    var lo = k < 6 ? 6 : (k < 13 ? 5 : 4);
+    var top = k < 6 ? 15 : (k < 13 ? 17 : 18);
+    var a = rnd(lo, 9);
+    var b = rnd(11 - a, Math.min(9, top - a));
+    return plain(a, '+', b);
+  }
+
   /** 減法一律保證結果不是負數 —— 五歲還沒有負數的概念 */
   function makeQuestion(stage) {
     var tier = tierOf(stage);
@@ -260,7 +363,13 @@
     if (tier === 7) return missingSpot(k, true);                // 彩虹：? 也會跑到前面
     // 城堡、海底、煙火都是三個數。換的只有場景 —— 同一件事再練三十關，
     // 到後面是要他不用數就知道，那需要的是重複，不是新花樣。
-    if (tier >= 8) return threeTerms(k);
+    if (tier <= 10) return threeTerms(k);
+
+    // 第 101 關之後的場景是 20 關，k 要從場景的第一關重新算
+    var into = stage - tierInfo(stage).from;
+    if (tier === 11) return splitNumber(into);
+    if (tier === 12) return splitForTen(into);
+    return addAcrossTen(into);
 
     if (k < 3) return addOverTen(k);                            // 太空：湊十拿來用
     return k < 6 ? subOverTen(k - 3) : twoDigit(k - 6);
@@ -273,19 +382,20 @@
    * carry 那組的 ±9、±10 是給兩位數用的陷阱：忘記進位剛好差 10，
    * 而那個答案就在選項裡等他。trap 是該題型特有的典型錯誤。
    */
-  function makeOptions(ans, mode, trap) {
+  function makeOptions(ans, mode, trap, min) {
     var offsets = mode === 'carry' ? [-10, -2, -1, 1, 2, 10, 9, -9] : [-3, -2, -1, 1, 2, 3];
+    var lo = min || 0;                 // 分解樹的腳不能是 0，那在概念上講不通
     var opts = [ans];
     var guard = 0;
 
-    if (trap != null && trap >= 0 && trap !== ans) opts.push(trap);
+    if (trap != null && trap >= lo && trap !== ans) opts.push(trap);
 
     while (opts.length < 4 && guard++ < 60) {
       var o = ans + offsets[Math.floor(Math.random() * offsets.length)];
-      if (o >= 0 && opts.indexOf(o) === -1) opts.push(o);
+      if (o >= lo && opts.indexOf(o) === -1) opts.push(o);
     }
     while (opts.length < 4) {
-      var f = Math.max(0, ans + opts.length);
+      var f = Math.max(lo, ans + opts.length);
       if (opts.indexOf(f) === -1) opts.push(f); else opts.push(f + 4);
     }
 
@@ -322,7 +432,9 @@
       var n = Math.max(0, Math.min(STAGES, cleared));
       var total = 0;
       for (var s = 1; s <= n; s++) total += tierOf(s);
-      return total + Math.floor(n / PER_TIER) * COINS_PER_TIER_BONUS;
+      // 場景不等寬，不能用 n / PER_TIER 算，要逐個看有沒有打完
+      TIERS.forEach(function (t) { if (n >= t.to) total += COINS_PER_TIER_BONUS; });
+      return total;
     },
 
     /** 把毫秒念成「1 分 20 秒」 */
@@ -340,6 +452,8 @@
     TIERS: TIERS,
     tierOf: tierOf,
     tierInfo: tierInfo,
+    isTierStart: isTierStart,
+    isTierEnd: isTierEnd,
     makeSet: makeSet,
     makeQuestion: makeQuestion
   };

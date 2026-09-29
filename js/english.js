@@ -122,6 +122,10 @@
     return Object.assign({ n: t, from: (t - 1) * PER_TIER + 1, to: t * PER_TIER }, TIERS[t - 1]);
   }
 
+  // 英文的場景全部等寬，但地圖是跟數學共用的，所以介面要一致
+  function isTierStart(stage) { return (stage - 1) % PER_TIER === 0; }
+  function isTierEnd(stage) { return stage % PER_TIER === 0; }
+
   /** 到這一關為止學過的所有字 */
   function poolFor(stage) {
     return WORDS.filter(function (x) { return x.at <= stage; });
@@ -204,6 +208,8 @@
 
     tierOf: tierOf,
     tierInfo: tierInfo,
+    isTierStart: isTierStart,
+    isTierEnd: isTierEnd,
     poolFor: poolFor,
     freshAt: freshAt,
     makeSet: makeSet
