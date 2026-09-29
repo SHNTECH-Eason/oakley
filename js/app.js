@@ -218,6 +218,7 @@
 
   var enVoice = null;
   var engVoiceWarned = false;
+  var learnRun = 0;            // 教學畫面的播放序號，換一關或中途離開就讓舊的序列停下來
 
   function pickEnVoice() {
     if (enVoice) return enVoice;
@@ -245,8 +246,8 @@
     return !!pickEnVoice();
   }
 
-  function sayWord(word, delay) {
-    if (!('speechSynthesis' in window)) return;
+  function sayWord(word, delay, onEnd) {
+    if (!('speechSynthesis' in window)) { if (onEnd) setTimeout(onEnd, 300); return; }
     setTimeout(function () {
       try {
         speechSynthesis.cancel();
@@ -255,8 +256,12 @@
         u.rate = 0.8;              // 單字要慢，他要聽清楚每個音
         var v = pickEnVoice();
         if (v) u.voice = v;
+        if (onEnd) {
+          u.onend = onEnd;
+          u.onerror = onEnd;       // 念不出來也要往下走，不然序列會卡住
+        }
         speechSynthesis.speak(u);
-      } catch (e) {}
+      } catch (e) { if (onEnd) onEnd(); }
     }, delay || 0);
   }
 
@@ -1200,15 +1205,24 @@
       card.appendChild(txt);
       card.appendChild(svgRef('i-sound', 'learn__sound'));
 
-      card.addEventListener('click', function () { sayWord(w.w, 0); });
+      card.addEventListener('click', function () { learnRun++; sayWord(w.w, 0); });
       list.appendChild(card);
-
-      // 開場自動依序念一遍，間隔要夠他聽完一個字
-      setTimeout(function () { sayWord(w.w, 0); }, 400 + i * 1100);
     });
 
     showQuizPanel('learn');
-    $('#learn-start').onclick = onStart;
+
+    // 開場自動依序念一遍。等前一個念完才念下一個 —— 用固定間隔的話，
+    // 遇到 banana、yellow 這種比較長的字，下一個的 cancel() 會把它切掉。
+    var run = ++learnRun;
+    (function next(i) {
+      if (i >= words.length || run !== learnRun) return;
+      sayWord(words[i].w, i === 0 ? 450 : 350, function () { next(i + 1); });
+    })(0);
+
+    $('#learn-start').onclick = function () {
+      learnRun++;              // 中途按開始就停掉還沒念完的
+      onStart();
+    };
   }
 
   /** 分解樹：要拆的數字下面長兩隻腳，空的那隻就是要答的 */
