@@ -1380,9 +1380,13 @@
     var stage = Store.quizStage();
     $('#cfg-stage').value = String(Math.min(Quiz.STAGES, stage));
     $('#cfg-daily').value = String(Store.dailyLimit());
+    // 全破時 stage 會是 STAGES + 1，那個數字不該直接寫給人看
+    var where = stage > Quiz.STAGES
+      ? '已經全部通關'
+      : '目前第 ' + stage + '（' + Quiz.tierInfo(stage).name + '）';
     $('#cfg-level-hint').textContent =
-      '共 ' + Quiz.STAGES + ' 關，目前第 ' + stage + '（' + Quiz.tierInfo(stage).name +
-      '），今天已前進 ' + Store.clearedToday() + ' 關。十題全對才過關，' +
+      '共 ' + Quiz.STAGES + ' 關，' + where +
+      '，今天已前進 ' + Store.clearedToday() + ' 關。十題全對才過關，' +
       '每關金幣＝場景編號（草原 1 到' + Quiz.TIERS[Quiz.TIERS.length - 1].place +
       ' ' + Quiz.TIERS.length + '），打完一整個場景額外 +' +
       Quiz.COINS_PER_TIER_BONUS + '。' +

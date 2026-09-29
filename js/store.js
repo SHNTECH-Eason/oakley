@@ -419,8 +419,13 @@
     return t && Array.isArray(t.cleared) ? t.cleared.length : 0;
   }
 
+  /**
+   * 目前在第幾關。全部破完時會是 STAGES + 1，那個「多出來的一關」是有意義的：
+   * 全破畫面、地圖上第 100 關要標成已通過、金幣要算滿，全都靠它判斷。
+   * 夾在 STAGES 的話破完最後一關會永遠停在「還沒破」的狀態。
+   */
   function quizStage() {
-    return Math.min(Quiz.STAGES, Math.max(1, state.settings.quizStage || 1));
+    return Math.min(Quiz.STAGES + 1, Math.max(1, state.settings.quizStage || 1));
   }
 
   /** 一天最多往前推進幾關。0 表示不限 */
@@ -498,8 +503,9 @@
   // 跟數學共用同一份每日紀錄，但用不同的欄位（engCleared）。
   // 每日額度也各自獨立 —— 兩科不該互相搶，練了英文不能害他今天不能玩數學。
 
+  /** 跟 quizStage 同樣的道理，全破時要能超過 STAGES */
   function engStage() {
-    return Math.min(Eng.STAGES, Math.max(1, state.settings.engStage || 1));
+    return Math.min(Eng.STAGES + 1, Math.max(1, state.settings.engStage || 1));
   }
 
   function engClearedToday() {
