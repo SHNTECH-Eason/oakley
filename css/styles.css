@@ -820,6 +820,69 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .quiz__opt:disabled { opacity: .55; }
 .quiz__opt.is-right:disabled, .quiz__opt.is-wrong:disabled { opacity: 1; }
 
+/* ── 英文：先教再考 ────────────────────────────────────────
+   新字第一次出現就直接考的話他只能用猜的，答錯才學得到。
+   每個新字都要先失敗一次才學會，那不對。                      */
+
+.learn__title { font-size: 1.5rem; font-weight: 900; line-height: 1.7; }
+.learn__sub { font-size: .9rem; font-weight: 700; color: var(--ink-soft); line-height: 1.8; }
+
+.learn__list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  max-width: 340px;
+  margin: 6px 0 4px;
+}
+.learn__card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  padding: 10px 14px;
+  min-height: 72px;
+  background: #fff;
+  border: 3px solid #c4b5fd;
+  border-radius: 18px;
+  box-shadow: var(--shadow);
+  text-align: left;
+  transition: transform .1s ease, background .2s;
+}
+.learn__card:active { transform: scale(.97); background: #f5f3ff; }
+
+.learn_-pic { width: 48px; height: 48px; flex-shrink: 0; }
+.learn_-swatch {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  border: 3px solid rgba(15, 23, 42, .18);
+  flex-shrink: 0;
+}
+.learn_-digit {
+  width: 48px;
+  flex-shrink: 0;
+  text-align: center;
+  font-family: ui-monospace, 'Cascadia Mono', Menlo, monospace;
+  font-size: 2.1rem;
+  font-weight: 900;
+}
+
+.learn__text { flex: 1; min-width: 0; }
+.learn__word {
+  font-family: ui-monospace, 'Cascadia Mono', Menlo, monospace;
+  font-size: 1.5rem;
+  font-weight: 900;
+  color: var(--ink);
+}
+.learn__zh { font-size: .92rem; font-weight: 700; color: var(--ink-soft); }
+.learn__sound { width: 24px; height: 24px; color: var(--brand); flex-shrink: 0; }
+
+@media (max-height: 700px) {
+  .learn__card { min-height: 62px; padding: 7px 12px; }
+  .learn_-pic { width: 40px; height: 40px; }
+  .learn__word { font-size: 1.3rem; }
+}
+
 /* ── 分解樹 ────────────────────────────────────────────────
    畫法跟課本一樣：要拆的數字下面長兩隻腳。
    第 121 關之後左邊還會有「8 +」，腳掛在後面那個數底下。      */

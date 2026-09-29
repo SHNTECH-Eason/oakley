@@ -1099,6 +1099,7 @@
   function showQuizPanel(which) {
     $('#quiz-play-panel').hidden = which !== 'play';
     $('#quiz-done').hidden = which !== 'done';
+    $('#quiz-learn').hidden = which !== 'learn';
   }
 
   // 名字不能叫 renderDots：家長 PIN 鍵盤已經有一個同名函式，
@@ -1125,18 +1126,33 @@
     };
     $('#quiz-level').textContent = (subject === 'eng' ? 'ABC 第 ' : '第 ') + stage + ' 關' +
                                    (replay ? '（重玩）' : '');
+    // 先把進度點清乾淨。教學畫面會先出現，這時候還沒走到 showQuestion，
+    // 不清的話上面會留著上一關的十個綠點，看起來像已經答完了
+    renderQuizDots(0);
     $('#quiz').classList.toggle('quiz--eng', subject === 'eng');
     showQuizPanel('play');
     $('#quiz').hidden = false;
-    if (subject === 'eng') {
-      unlockAudio();             // 英文題靠語音，第一次點的手勢要用掉
-      // 沒有英文語音的話題目會退回顯示單字，那就不是聽力了 —— 要讓家長知道
-      if (!speechReady() && !engVoiceWarned) {
-        engVoiceWarned = true;
-        toast('這台裝置沒有英文語音，先顯示單字');
-      }
+
+    if (subject !== 'eng') { showQuestion(); return; }
+
+    unlockAudio();               // 英文題靠語音，第一次點的手勢要用掉
+    // 沒有英文語音的話題目會退回顯示單字，那就不是聽力了 —— 要讓家長知道
+    if (!speechReady() && !engVoiceWarned) {
+      engVoiceWarned = true;
+      toast('這台裝置沒有英文語音，先顯示單字');
     }
-    showQuestion();
+
+    // 這一關有沒有新字，有的話先教過再考
+    var fresh = Eng.freshAt(stage);
+    if (!fresh.length) { showQuestion(); return; }
+
+    showLearn(fresh, function () {
+      // 計時從真正開始答題算起 —— 他在教學畫面停多久不該算進最快紀錄，
+      // 那個秒數是用來看他有沒有變熟的，摻進看單字的時間就沒意義了
+      quizState.startedAt = Date.now();
+      showQuizPanel('play');
+      showQuestion();
+    });
   }
 
   function closeQuiz() {
@@ -1146,20 +1162,53 @@
     renderTop();
   }
 
-  /** 把一個英文選項畫出來：圖、色塊、或數字 */
+  /** 一個英文字的圖：SVG 圖卡、色塊、或數字 */
+  function engVisual(word, cls) {
+    if (word.kind === 'color') {
+      var dot = el('span', cls + '-swatch');
+      dot.style.background = word.val;
+      return dot;
+    }
+    if (word.kind === 'digit') return el('span', cls + '-digit', word.val);
+    return svgRef(word.val, cls + '-pic');
+  }
+
+  /** 把一個英文選項畫出來 */
   function engOption(word) {
     var b = el('button', 'quiz__opt quiz__opt--pic');
     b.setAttribute('aria-label', word.zh);
-    if (word.kind === 'color') {
-      var dot = el('span', 'quiz__swatch');
-      dot.style.background = word.val;
-      b.appendChild(dot);
-    } else if (word.kind === 'digit') {
-      b.appendChild(el('span', 'quiz__digit', word.val));
-    } else {
-      b.appendChild(svgRef(word.val, 'quiz__pic'));
-    }
+    b.appendChild(engVisual(word, 'quiz_'));
     return b;
+  }
+
+  /**
+   * 這一關的新字，考之前先聽過一遍。
+   * 每一張點下去會再念一次 —— 大人可以跟著他一起說。
+   */
+  function showLearn(words, onStart) {
+    var list = $('#learn-list');
+    list.textContent = '';
+
+    words.forEach(function (w, i) {
+      var card = el('button', 'learn__card');
+      card.setAttribute('aria-label', '聽 ' + w.w + '，' + w.zh);
+      card.appendChild(engVisual(w, 'learn_'));
+
+      var txt = el('div', 'learn__text');
+      txt.appendChild(el('div', 'learn__word', w.w));
+      txt.appendChild(el('div', 'learn__zh', w.zh));
+      card.appendChild(txt);
+      card.appendChild(svgRef('i-sound', 'learn__sound'));
+
+      card.addEventListener('click', function () { sayWord(w.w, 0); });
+      list.appendChild(card);
+
+      // 開場自動依序念一遍，間隔要夠他聽完一個字
+      setTimeout(function () { sayWord(w.w, 0); }, 400 + i * 1100);
+    });
+
+    showQuizPanel('learn');
+    $('#learn-start').onclick = onStart;
   }
 
   /** 分解樹：要拆的數字下面長兩隻腳，空的那隻就是要答的 */

@@ -569,6 +569,15 @@
   </div>
 
   <!-- 結算畫面 -->
+  <!-- 先教再考。新字第一次出現就直接考的話，他只能用猜的，
+       答錯才從回饋裡學到 —— 每個新字都要先失敗一次才學得到，不對 -->
+  <div class="quiz__panel" id="quiz-learn" hidden>
+    <div class="learn__title" data-zy="先聽聽看"></div>
+    <div class="learn__sub" data-zy="這一關有新的字"></div>
+    <div class="learn__list" id="learn-list"></div>
+    <button class="btn btn--primary quiz__play" id="learn-start" data-zy="開始挑戰"></button>
+  </div>
+
   <div class="quiz__panel" id="quiz-done" hidden>
     <div class="quiz__hero quiz__hero--big" id="quiz-done-hero"></div>
     <div class="quiz__big" id="quiz-done-title"></div>
