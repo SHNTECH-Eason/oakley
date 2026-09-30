@@ -30,7 +30,16 @@
     { name: '身邊的東西', desc: 'dog　ball　cup', color: 'rose',   scene: 'rainbow', place: '彩虹' },
     { name: '顏色與食物', desc: 'red　apple',     color: 'cyan',   scene: 'sea',     place: '海底' },
     { name: '身體',       desc: 'eye　hand',      color: 'amber',  scene: 'meadow',  place: '草原' },
-    { name: '數字與動作', desc: 'three　jump',    color: 'orange', scene: 'castle',  place: '城堡' }
+    { name: '數字與動作', desc: 'three　jump',    color: 'orange', scene: 'castle',  place: '城堡' },
+
+    // 第 41 關之後不再出新字，全部拿來複習。
+    //
+    // 沒有這一段的話，最後一批字（第 31–35 關教的）在整場 40 關裡平均只被
+    // 考到 2.9 次，four 甚至只有 1 次 —— 46 個字搶 10 題，每個字每關的期望值
+    // 是 0.22 次，早期的字有四十關可以累積，最後的字只剩五關。
+    // 教一次考兩次就再也沒見過，那不叫學會。
+    { name: '全部複習',   desc: '學過的字',      color: 'emerald', scene: 'forest', place: '森林' },
+    { name: '全部複習',   desc: '學過的字',      color: 'fuchsia', scene: 'fireworks', place: '煙火' }
   ];
 
   var STAGES = TIERS.length * PER_TIER;
