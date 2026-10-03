@@ -1168,21 +1168,24 @@
   }
 
   /** 一個英文字的圖：SVG 圖卡、色塊、或數字 */
-  function engVisual(word, cls) {
+  // block 是 BEM 的區塊名（quiz / learn），底下一律是 __pic / __swatch / __digit。
+  // 傳整個 class 名進來比較沒彈性，但傳前綴就很容易拼錯 —— 這裡拼錯的話
+  // 圖不會壞掉、只會沒有樣式，看起來就是「圖不見了」，很難一眼看出來。
+  function engVisual(word, block) {
     if (word.kind === 'color') {
-      var dot = el('span', cls + '-swatch');
+      var dot = el('span', block + '__swatch');
       dot.style.background = word.val;
       return dot;
     }
-    if (word.kind === 'digit') return el('span', cls + '-digit', word.val);
-    return svgRef(word.val, cls + '-pic');
+    if (word.kind === 'digit') return el('span', block + '__digit', word.val);
+    return svgRef(word.val, block + '__pic');
   }
 
   /** 把一個英文選項畫出來 */
   function engOption(word) {
     var b = el('button', 'quiz__opt quiz__opt--pic');
     b.setAttribute('aria-label', word.zh);
-    b.appendChild(engVisual(word, 'quiz_'));
+    b.appendChild(engVisual(word, 'quiz'));
     return b;
   }
 
@@ -1197,7 +1200,7 @@
     words.forEach(function (w, i) {
       var card = el('button', 'learn__card');
       card.setAttribute('aria-label', '聽 ' + w.w + '，' + w.zh);
-      card.appendChild(engVisual(w, 'learn_'));
+      card.appendChild(engVisual(w, 'learn'));
 
       var txt = el('div', 'learn__text');
       txt.appendChild(el('div', 'learn__word', w.w));
